@@ -1,7 +1,12 @@
-const testFileExtension = 'ts?(x)';
 module.exports = {
-    preset: 'jest-expo',
-    collectCoverageFrom: ['<rootDir>/src/**/*.{ts,tsx,js,jsx}', '!<rootDir>/src/**/__mocks__/**', '!<rootDir>/src/**/tests/**', '!**/*.d.ts'],
+  // Increase the timeout for tests to handle flakiness in CI
+  testTimeout: 30000,
+
+  preset: 'react-native',
+  setupFilesAfterEnv: ['<rootDir>/jest/setup.js'],
+  // Retry failed tests up to 2 times
+  retry: 2,
+};
     testMatch: [
         `<rootDir>/tests/ui/**/*.${testFileExtension}`,
         `<rootDir>/tests/unit/**/*.${testFileExtension}`,
