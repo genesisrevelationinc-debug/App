@@ -1,9 +1,10 @@
-        .then(() => {
-            Log.info('Successfully signed in with magic link and 2FA');
-            Navigation.navigate(ROUTES.HOME);
-            // Ensure the Inbox is refreshed after successful login
-            ReportActions.openReport(ReportUtils.getPersonalChatReportID(currentUserAccountID));
-            ReportActions.reopenReport(ReportUtils.getPersonalChatReportID(currentUserAccountID));
-        })
-        .catch((error) => {
-            Log.error('Failed to sign in with magic link and 2FA', {error});
+        .then((response) => {
+            if (response.jsonCode === 200) {
+                Onyx.merge(ONYXKEYS.SESSION, {authToken: response.authToken});
+                // Ensure the Inbox is refreshed after successful login
+                Onyx.set(ONYXKEYS.IS_LOADING_REPORT_DATA, true);
+                ReportActions.fetchAllReports();
+                Onyx.set(ONYXKEYS.IS_LOADING_REPORT_DATA, false);
+                Navigation.dismissModal();
+            } else {
+                Onyx.merge(ONYXKEYS.SESSION, {error: response.message});
