@@ -1,10 +1,24 @@
-        .then((response) => {
-            const reportID = response.reportID;
-            Onyx.merge(ONYXKEYS.COLLECTION.REPORT, {[reportID]: response});
-            // Navigate to the newly created report
-            Navigation.navigate(ROUTES.REPORT_WITH_ID.getRoute(reportID));
-            // Fetch the report actions to ensure the UI is updated
-            ReportActions.fetchActions(reportID);
-        })
-        .catch((error) => {
-            Log.error('Failed to create chat report', {error});
+import * as OnyxUtils from '../OnyxUtils';
+import * as PersonalDetailsUtils from '../PersonalDetailsUtils';
+import * as ReportUtils from '../ReportUtils';
+import * as SessionUtils from '../SessionUtils';
+import * as UserUtils from '../UserUtils';
+import {SIDE_EFFECT_REQUEST_COMMANDS} from '../Request';
+import {reportPropTypes} from '../../pages/reportPropTypes';
+const allSortedReports = {};
+const allReportsData = {};
+
+function fetchAllReports() {
+    API.read({returnValueList: 'reports'});
+}
+
+function clearData() {
+    allReports = {};
+    allSortedReports = {};
+    if (!reportID) {
+        return;
+    }
+    fetchAllReports();
+    const report = allReports[reportID];
+    if (!report) {
+        return;
