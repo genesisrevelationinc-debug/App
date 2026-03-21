@@ -1,9 +1,24 @@
-    Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`, {isLoadingInitialReportActions: true});
+import * as OnyxUtils from '../OnyxUtils';
+import * as PersonalDetailsUtils from '../PersonalDetailsUtils';
+import * as ReportUtils from '../ReportUtils';
+import * as SessionUtils from '../SessionUtils';
+import * as UserUtils from '../UserUtils';
+import {SIDE_EFFECT_REQUEST_COMMANDS} from '../Request';
+import {reportPropTypes} from '../../pages/reportPropTypes';
+const allSortedReports = {};
+const allReportsData = {};
 
-    API.read('GetReport', {reportID})
-        .finally(() => {
-            Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`, {isLoadingInitialReportActions: false});
-        })
-        .then((response) => {
-            if (response.jsonCode === 200) {
-                Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`, response.report);
+function fetchAllReports() {
+    API.read({returnValueList: 'reports'});
+}
+
+function clearData() {
+    allReports = {};
+    allSortedReports = {};
+    if (!reportID) {
+        return;
+    }
+    fetchAllReports();
+    const report = allReports[reportID];
+    if (!report) {
+        return;
