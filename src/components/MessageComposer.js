@@ -1,31 +1,22 @@
 import lodashGet from 'lodash/get';
-import lodashSet from 'lodash/set';
-import {Cache} from 'react-native-cache';
-import {PropTypes} from 'prop-types';
-import React from 'react';
-import {View, Text, Image, TouchableOpacity} from 'react-native';
-const MessageComposerPropTypes = {
-    onSend: PropTypes.func.isRequired,
-};
-const cache = new Cache({
-    namespace: 'attachments',
-});
+import lodashIsEqual from 'lodash/isEqual';
+import lodashMerge from 'lodash/merge';
+import {cacheAttachment} from '../libs/AttachmentUtils';
 
-const MessageComposer = (props) => {
-    const {onSend} = props;
-    const [message, setMessage] = React.useState('');
-        .catch((error) => {
-            console.error('Failed to fetch markdown image:', error);
-        });
-
-    const cacheMarkdownImage = async (url, data) => {
-        try {
-            await cache.setItem(url, data);
-        } catch (error) {
-            console.error('Failed to cache markdown image:', error);
+const propTypes = {
+    /** The report currently being looked at */
+            return;
         }
-    };
 
-    cacheMarkdownImage(url, response);
-    return (
-        <View style={styles.messageComposerContainer}>
+        // Check for markdown image URLs and cache them
+        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+        let match;
+        while ((match = markdownImageRegex.exec(messageText))) {
+            fetch(match[1])
+                .then(response => response.blob())
+                .then(blob => cacheAttachment(match[1], blob));
+        }
+
+        // If we are editing a comment, we want to update it instead of creating a new one
+        if (this.state.isEditing) {
+            this.updateComment();
