@@ -1,23 +1,24 @@
-import lodashIsEqual from 'lodash/isEqual';
-import lodashMerge from 'lodash/merge';
 import lodashSet from 'lodash/set';
-import {getCachedAttachment} from '../libs/AttachmentUtils';
+import lodashClone from 'lodash/clone';
+import lodashCloneDeep from 'lodash/cloneDeep';
+import {getCachedAttachment} from './AttachmentUtils';
+import {withOnyx} from 'react-native-onyx';
+import {withNetwork} from '../components/OnyxProvider';
+import {withLocalize, withWindowDimensions} from '../components/OnyxProvider';
+        const imageUrl = lodashGet(request, 'data.url');
 
-const propTypes = {
-    /** The report currently being looked at */
-            return;
-        }
-
-        // Check for markdown image URLs and cache them
-        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
-        let match;
-        while ((match = markdownImageRegex.exec(messageText))) {
-            const cachedBlob = await getCachedAttachment(match[1]);
+        if (imageUrl) {
+            // Check if the image is cached
+            const cachedBlob = await getCachedAttachment(imageUrl);
             if (cachedBlob) {
-                // Use cached blob for the request
+                // Use the cached image
+                request.data.blob = cachedBlob;
+                request.data.url = undefined; // Remove the URL to use the blob
+                return request;
             }
+
+            // If not cached, proceed with the original request
         }
 
-        // If we are editing a comment, we want to update it instead of creating a new one
-        if (this.state.isEditing) {
-            this.updateComment();
+        return request;
+    }
