@@ -17,7 +17,7 @@ function ReportList({isLoadingReportData}) {
         if (!SessionUtils.isAnonymousUser()) {
     return (
         <View style={[styles.flex1]}>
-            {isLoadingReportData && <SkeletonView />}
+            {isLoadingReportData && <ActivityIndicator size="large" color={styles.spinner.color} />}
             {!isLoadingReportData && <ReportListContent />}
         </View>
     );
@@ -26,9 +26,3 @@ ReportList.defaultProps = defaultProps;
 
 export default withOnyx({
     isLoadingReportData: {
-        key: ONYXKEYS.IS_LOADING_REPORT_DATA,
-    },
-    isLoadingReportData: {
-        key: ONYXKEYS.IS_LOADING_REPORT_DATA,
-    },
-})(ReportList);
