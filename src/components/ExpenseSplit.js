@@ -12,8 +12,8 @@
     };
                 <TextInput
                     key={index}
-                    value={splitValue.toString()}
-                    onChangeText={(value) => handlePercentageChange(index, parseFloat(value))}
+                    value={splitValues[index].toString()}
+                    onChangeText={(value) => handlePercentageChange(index, value.replace(/[^0-9.]/g, ''))}
                     keyboardType="numeric"
                     style={styles.input}
                 />
