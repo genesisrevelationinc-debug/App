@@ -1,30 +1,23 @@
-import lodashGet from 'lodash/get';
+import lodashIsEqual from 'lodash/isEqual';
+import lodashMerge from 'lodash/merge';
 import lodashSet from 'lodash/set';
-import {Cache} from 'react-native-cache';
-import {PropTypes} from 'prop-types';
-import React from 'react';
-import {View, Text, Image, TouchableOpacity} from 'react-native';
-const NetworkPropTypes = {
-    url: PropTypes.string.isRequired,
-};
-const cache = new Cache({
-    namespace: 'attachments',
-});
+import {getCachedAttachment} from '../libs/AttachmentUtils';
 
-const Network = (props) => {
-    const {url} = props;
-        .catch((error) => {
-            console.error('Failed to fetch network resource:', error);
-        });
-
-    const cacheResource = async (url, data) => {
-        try {
-            await cache.setItem(url, data);
-        } catch (error) {
-            console.error('Failed to cache network resource:', error);
+const propTypes = {
+    /** The report currently being looked at */
+            return;
         }
-    };
 
-    cacheResource(url, response);
-    return (
-        <View style={styles.networkContainer}>
+        // Check for markdown image URLs and cache them
+        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+        let match;
+        while ((match = markdownImageRegex.exec(messageText))) {
+            const cachedBlob = await getCachedAttachment(match[1]);
+            if (cachedBlob) {
+                // Use cached blob for the request
+            }
+        }
+
+        // If we are editing a comment, we want to update it instead of creating a new one
+        if (this.state.isEditing) {
+            this.updateComment();
