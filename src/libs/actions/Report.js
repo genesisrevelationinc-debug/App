@@ -1,16 +1,24 @@
 import * as OnyxUtils from '../OnyxUtils';
-import * as PersonalDetails from './PersonalDetails';
-import * as Policy from './Policy';
-import * as Session from './Session';
-import * as User from './User';
-import * as Welcome from './Welcome';
-import CONST from '../../CONST';
-    API.read(
-        {
-            returnValueList: 'reportData',
-            // Ensure we fetch the latest data after login
-            forceNetworkRequest: true,
-            // Include any other necessary parameters here
-        },
-        {
-            optimisticData: [
+import * as PersonalDetailsUtils from '../PersonalDetailsUtils';
+import * as ReportUtils from '../ReportUtils';
+import * as SessionUtils from '../SessionUtils';
+import * as UserUtils from '../UserUtils';
+import {SIDE_EFFECT_REQUEST_COMMANDS} from '../Request';
+import {reportPropTypes} from '../../pages/reportPropTypes';
+const allSortedReports = {};
+const allReportsData = {};
+
+function fetchAllReports() {
+    API.read({returnValueList: 'reports'});
+}
+
+function clearData() {
+    allReports = {};
+    allSortedReports = {};
+    if (!reportID) {
+        return;
+    }
+    fetchAllReports();
+    const report = allReports[reportID];
+    if (!report) {
+        return;
