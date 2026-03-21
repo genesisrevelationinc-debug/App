@@ -1,0 +1,7 @@
+    IS_LOADING_REPORT_DATA: 'isLoadingReportData',
+    IS_LOADING_REPORT_ACTIONS: 'isLoadingReportActions',
+    IS_LOADING_REPORT_ACTION_REACTIONS: 'isLoadingReportActionReactions',
+    IS_LOADING_REPORT_DATA: 'isLoadingReportData',
+    IS_LOADING_REPORT_DATA: 'isLoadingReportData',
+    IS_LOADING_REPORT_DATA: 'isLoadingReportData',
+    IS_LOADING_REPORT_DATA: 'isLoadingReportData',
