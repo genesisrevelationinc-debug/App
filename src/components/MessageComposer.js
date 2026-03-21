@@ -1,22 +1,34 @@
 import lodashGet from 'lodash/get';
-import lodashIsEqual from 'lodash/isEqual';
-import lodashMerge from 'lodash/merge';
+import lodashSet from 'lodash/set';
+import {PropTypes} from 'prop-types';
 import {cacheAttachment} from '../libs/AttachmentUtils';
-
-const propTypes = {
-    /** The report currently being looked at */
-            return;
-        }
-
-        // Check for markdown image URLs and cache them
-        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+import {withOnyx} from 'react-native-onyx';
+import {withNetwork} from '../components/OnyxProvider';
+import {withLocalize, withWindowDimensions} from '../components/OnyxProvider';
+        const markdownImageRegex = /!\[.*?\]\((.*?)\)/g;
         let match;
-        while ((match = markdownImageRegex.exec(messageText))) {
-            fetch(match[1])
-                .then(response => response.blob())
-                .then(blob => cacheAttachment(match[1], blob));
+
+        const cacheMarkdownImages = async () => {
+            while ((match = markdownImageRegex.exec(messageText)) !== null) {
+                const imageUrl = match[1];
+                try {
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    cacheAttachment(imageUrl, blob);
+                } catch (error) {
+                    console.error('Failed to cache markdown image:', error);
+                }
+            }
+        };
+
+        // Check if the message contains a markdown image
+        if (markdownImageRegex.test(messageText)) {
+            // Replace markdown images with the actual image component
+                messageText = messageText.replace(match[0], `<img src="${imageUrl}" alt="${match[1]}" />`);
+            }
+
+            // Cache the markdown images
+            cacheMarkdownImages();
         }
 
-        // If we are editing a comment, we want to update it instead of creating a new one
-        if (this.state.isEditing) {
-            this.updateComment();
+        // Send the message
