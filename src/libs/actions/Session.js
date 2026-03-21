@@ -1,10 +1,10 @@
         .then((response) => {
             if (response.jsonCode === 200) {
                 Onyx.merge(ONYXKEYS.SESSION, {authToken: response.authToken});
-                // Ensure the Inbox is refreshed after successful login
-                Onyx.set(ONYXKEYS.IS_LOADING_REPORT_DATA, true);
-                ReportActions.fetchAllReports();
-                Onyx.set(ONYXKEYS.IS_LOADING_REPORT_DATA, false);
-                Navigation.dismissModal();
+                // Clear any loading states or messages that might be set
+                Onyx.set(ONYXKEYS.IS_LOADING, false);
+                Onyx.set(ONYXKEYS.SESSION_ERROR, '');
+
+                Navigation.navigate(ROUTES.HOME);
             } else {
-                Onyx.merge(ONYXKEYS.SESSION, {error: response.message});
+                Onyx.set(ONYXKEYS.SESSION_ERROR, response.message);
