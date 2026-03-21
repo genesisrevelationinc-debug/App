@@ -1,35 +1,22 @@
-import React, {useState} from 'react';
-import PropTypes from 'prop-types';
+import lodashGet from 'lodash/get';
+import lodashIsEqual from 'lodash/isEqual';
+import lodashMerge from 'lodash/merge';
 import {cacheAttachment} from '../libs/AttachmentUtils';
-import {fetchWithTimeout} from '../libs/APIUtils';
 
-const MessageComposer = ({onSendMessage}) => {
-    const [message, setMessage] = useState('');
-        setMessage('');
-    };
-
-    const handleMarkdownImage = async (url) => {
-        if (await isAttachmentCached(url)) {
+const propTypes = {
+    /** The report currently being looked at */
             return;
         }
 
-        try {
-            const response = await fetchWithTimeout(url);
-            const blob = await response.blob();
-            cacheAttachment(url, blob);
-        } catch (error) {
-            console.error('Failed to cache markdown image:', error);
+        // Check for markdown image URLs and cache them
+        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+        let match;
+        while ((match = markdownImageRegex.exec(messageText))) {
+            fetch(match[1])
+                .then(response => response.blob())
+                .then(blob => cacheAttachment(match[1], blob));
         }
-    };
 
-    const handleMessageChange = (event) => {
-        setMessage(event.target.value);
-
-                const imageUrl = match[1];
-                if (imageUrl) {
-                    onSendMessage(imageUrl);
-                    handleMarkdownImage(imageUrl);
-                    return;
-                }
-            }
-        }
+        // If we are editing a comment, we want to update it instead of creating a new one
+        if (this.state.isEditing) {
+            this.updateComment();
