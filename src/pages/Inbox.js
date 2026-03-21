@@ -17,7 +17,7 @@ function Inbox({isLoadingReportData}) {
         if (!SessionUtils.isAnonymousUser()) {
     return (
         <View style={[styles.flex1]}>
-            {isLoadingReportData && <ActivityIndicator size="large" color={styles.spinner.color} />}
+            {isLoadingReportData && <SkeletonView />}
             {!isLoadingReportData && <ReportList />}
         </View>
     );
@@ -26,3 +26,9 @@ Inbox.defaultProps = defaultProps;
 
 export default withOnyx({
     isLoadingReportData: {
+        key: ONYXKEYS.IS_LOADING_REPORT_DATA,
+    },
+    isLoadingReportData: {
+        key: ONYXKEYS.IS_LOADING_REPORT_DATA,
+    },
+})(Inbox);
