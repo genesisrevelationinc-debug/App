@@ -1,17 +1,11 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from '../screens/HomeScreen';
-import ChatScreen from '../screens/ChatScreen';
-const Navigation = () => (
-    <SafeAreaProvider>
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName="Home">
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen name="Chat" component={ChatScreen} />
-            </Stack.Navigator>
-        </NavigationContainer>
-    </SafeAreaProvider>
-);
+import {createStackNavigator} from '@react-navigation/stack';
+import {enableScreens} from 'react-native-screens';
+const Stack = createStackNavigator();
+    <Stack.Navigator>
+      {/* Define your screens here */}
+    </Stack.Navigator>
+  );
+  enableScreens();
+};
 export default Navigation;
