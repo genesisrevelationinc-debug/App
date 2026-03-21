@@ -4,12 +4,12 @@ import {useFocusEffect} from '@react-navigation/native';
 import {useCallback} from 'react';
 const PreviousScreen = () => {
     useCallback(() => {
-      // Perform any side-effects related to focusing the screen
+      // Perform any side-effects here
     }, []),
   );
   useFocusEffect(
     useCallback(() => {
-      // Additional focus effect to handle screen transitions smoothly
+      // Clear any previous screen state or flicker issues
     }, []),
   );
   return (
