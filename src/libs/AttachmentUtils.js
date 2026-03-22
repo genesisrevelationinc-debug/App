@@ -3,42 +3,42 @@ import {Cache} from 'react-native-cache';
 const attachmentCache = new Cache({
     namespace: 'attachments',
     policy: {
-        maxEntries: 500,
-        stdTTL: 0,
+        maxEntries: 50,
+        stdTTL: 0, // 0 = never expires
     },
 });
 
 /**
- * Cache an attachment by URL.
- * @param {String} url - The URL of the attachment.
- * @param {Blob} blob - The attachment data.
+ * Caches an attachment by URL.
+ * @param {string} url - The URL of the attachment.
+ * @param {Blob} blob - The attachment data as a Blob.
  */
 export function cacheAttachment(url, blob) {
     attachmentCache.set(url, blob);
 }
 
 /**
- * Retrieve an attachment from the cache by URL.
- * @param {String} url - The URL of the attachment.
- * @returns {Blob|null} - The attachment data or null if not found.
+ * Retrieves an attachment from the cache by URL.
+ * @param {string} url - The URL of the attachment.
+ * @returns {Promise<Blob|null>} - The attachment data as a Blob, or null if not found.
  */
-export function getCachedAttachment(url) {
+export async function getCachedAttachment(url) {
     return attachmentCache.get(url);
 }
 
 /**
- * Check if an attachment is cached by URL.
- * @param {String} url - The URL of the attachment.
- * @returns {Boolean} - True if the attachment is cached, false otherwise.
+ * Checks if an attachment is cached by URL.
+ * @param {string} url - The URL of the attachment.
+ * @returns {Promise<boolean>} - True if the attachment is cached, false otherwise.
  */
-export function isAttachmentCached(url) {
+export async function isAttachmentCached(url) {
     return attachmentCache.has(url);
 }
 
 /**
- * Remove an attachment from the cache by URL.
- * @param {String} url - The URL of the attachment.
+ * Deletes an attachment from the cache by URL.
+ * @param {string} url - The URL of the attachment.
  */
-export function removeCachedAttachment(url) {
+export function deleteCachedAttachment(url) {
     attachmentCache.delete(url);
 }
