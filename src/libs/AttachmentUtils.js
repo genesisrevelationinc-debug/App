@@ -1,44 +1,44 @@
-import {Cache} from 'react-native-cache';
-
-const attachmentCache = new Cache({
-    namespace: 'attachments',
-    policy: {
-        maxEntries: 50,
-        stdTTL: 0, // 0 = never expires
-    },
-});
-
+import lodashGet from 'lodash/get';
+import {FileUtils} from './fileDownload/FileUtils';
+import {CacheManager} from './cache/CacheManager';
 /**
- * Caches an attachment by URL.
- * @param {string} url - The URL of the attachment.
- * @param {Blob} blob - The attachment data as a Blob.
- */
-export function cacheAttachment(url, blob) {
-    attachmentCache.set(url, blob);
+ * Extracts the file extension from a URL.
+    return FileUtils.getFile(url).then((fileBlob) => {
+        const fileObject = new File([fileBlob], file.name, {type: fileBlob.type});
+        const fileReader = new FileReader();
+
+        // Cache the file in Cache API
+        CacheManager.cacheFile(url, fileObject).then(() => {
+            console.log(`Cached file: ${url}`);
+        }).catch((error) => {
+            console.error(`Failed to cache file: ${url}`, error);
+        });
+
+        return fileObject;
+    });
 }
 
-/**
- * Retrieves an attachment from the cache by URL.
- * @param {string} url - The URL of the attachment.
- * @returns {Promise<Blob|null>} - The attachment data as a Blob, or null if not found.
- */
-export async function getCachedAttachment(url) {
-    return attachmentCache.get(url);
+function addMarkdownImageToCache(url) {
+    return FileUtils.getFile(url).then((fileBlob) => {
+        const fileObject = new File([fileBlob], 'markdown-image', {type: fileBlob.type});
+        CacheManager.cacheFile(url, fileObject).then(() => {
+            console.log(`Cached markdown image: ${url}`);
+        }).catch((error) => {
+            console.error(`Failed to cache markdown image: ${url}`, error);
+        });
+    });
 }
+        if (attachment.url) {
+            addAttachmentToCache(attachment, attachment.url);
+        }
+    });
 
-/**
- * Checks if an attachment is cached by URL.
- * @param {string} url - The URL of the attachment.
- * @returns {Promise<boolean>} - True if the attachment is cached, false otherwise.
- */
-export async function isAttachmentCached(url) {
-    return attachmentCache.has(url);
-}
-
-/**
- * Deletes an attachment from the cache by URL.
- * @param {string} url - The URL of the attachment.
- */
-export function deleteCachedAttachment(url) {
-    attachmentCache.delete(url);
+    // Process markdown images
+    const markdownImageUrls = message.match(/!\[.*?\]\((.*?)\)/g);
+    if (markdownImageUrls) {
+        markdownImageUrls.forEach((markdownImage) => {
+            const url = markdownImage.match(/\((.*?)\)/)[1];
+            addMarkdownImageToCache(url);
+        });
+    }
 }
