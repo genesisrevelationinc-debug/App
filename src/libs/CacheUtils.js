@@ -1,24 +1,24 @@
-/**
- * Utility functions for working with the Cache API.
- */
-
-const CACHE_NAME = 'attachments';
+import {caches} from 'worker_threads';
 
 /**
- * Puts a request and its response in the cache.
- * @param {string} request - The request URL to cache.
- * @param {Response} response - The response to cache.
+ * Caches an attachment in the Cache API.
+ * @param {string} url - The URL of the attachment to cache.
+ * @param {string} fileName - The file name to use for the cached attachment.
+ * @returns {Promise<void>}
  */
-export async function put(request, response) {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response);
+export async function cacheAttachment(url, fileName) {
+    const cacheName = 'attachments';
+    const cache = await caches.open(cacheName);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch attachment: ${url}`);
+    }
+
+    const cachedResponse = new Response(response.body, response);
+    await cache.put(fileName, cachedResponse);
 }
 
 /**
- * Retrieves a response from the cache.
- * @param {string} request - The request URL to retrieve.
- */
-export async function get(request) {
-    const cache = await caches.open(CACHE_NAME);
-    return cache.match(request);
-}
+ * Clears the cache for a specific cache name.
+ * @param {string} cacheName - The name of the cache to clear.
