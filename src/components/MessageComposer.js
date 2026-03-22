@@ -1,14 +1,22 @@
-import React, {useState} from 'react';
-import PropTypes from 'prop-types';
-import {handleMarkdownImages} from '../libs/AttachmentUtils';
+import lodashGet from 'lodash/get';
+import lodashIsEqual from 'lodash/isEqual';
+import lodashMerge from 'lodash/merge';
+import {cacheAttachment} from '../libs/AttachmentUtils';
 
-const MessageComposer = ({onSendMessage}) => {
-    const [message, setMessage] = useState('');
-    const sendMessage = () => {
-        if (message.trim()) {
-            // Handle markdown images before sending the message
-            const processedMessage = handleMarkdownImages(message, () => {});
-
-            onSendMessage(processedMessage);
-            setMessage('');
+const propTypes = {
+    /** The report currently being looked at */
+            return;
         }
+
+        // Check for markdown image URLs and cache them
+        const markdownImageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+        let match;
+        while ((match = markdownImageRegex.exec(messageText))) {
+            fetch(match[1])
+                .then(response => response.blob())
+                .then(blob => cacheAttachment(match[1], blob));
+        }
+
+        // If we are editing a comment, we want to update it instead of creating a new one
+        if (this.state.isEditing) {
+            this.updateComment();
