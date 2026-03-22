@@ -1,22 +1,14 @@
 import PropTypes from 'prop-types';
-import {View, Modal, StyleSheet, Image} from 'react-native';
-import {withOnyx} from 'react-native-onyx';
-import {Dimensions} from 'react-native';
+import { View, Modal, StyleSheet, Image } from 'react-native';
+import { withWindowDimensions } from 'react-native-safe-area-context';
+import { Dimensions } from 'react-native';
 
-const propTypes = {
-    receiptURL: PropTypes.string.isRequired,
-    isVisible: false,
-};
-
-const {height} = Dimensions.get('window');
-
-const ReceiptModal = (props) => {
+const ReceiptModal = ({ isVisible, onClose, receiptUrl, windowWidth, windowHeight }) => {
     return (
-        <Modal
-                <View style={styles.container}>
+                <View style={styles.modalContainer}>
                     <Image
-                        source={{uri: props.receiptURL}}
-                        style={[styles.image, {height: height - 100}]} // Adjust height to fill modal
+                        source={{ uri: receiptUrl }}
+                        style={[styles.receiptImage, { width: windowWidth, height: windowHeight }]}
                     />
                 </View>
             </View>
@@ -25,8 +17,9 @@ const ReceiptModal = (props) => {
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
     },
-    image: {
+    receiptImage: {
         resizeMode: 'contain',
-        width: '95%',
+        width: '100%',
+        height: '100%',
     },
 });
