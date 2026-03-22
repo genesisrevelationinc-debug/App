@@ -1,33 +1,44 @@
-import lodashGet from 'lodash/get';
-import {Log} from './DebugUtils';
-import {Cache} from './CacheUtils';
+import {Cache} from 'react-native-cache';
+
+const attachmentCache = new Cache({
+    namespace: 'attachments',
+    policy: {
+        maxEntries: 50,
+        stdTTL: 0, // 0 = never expires
+    },
+});
+
 /**
- * Extracts the attachment URL from a markdown image syntax.
-    return null;
-}
-/**
- * Caches the attachment URL in the Cache API.
- * @param {string} url - The URL of the attachment to cache.
+ * Caches an attachment by URL.
+ * @param {string} url - The URL of the attachment.
+ * @param {Blob} blob - The attachment data as a Blob.
  */
-async function cacheAttachment(url) {
-    if ('caches' in window) {
-        try {
-            await Cache.put(url, await fetch(url));
-        } catch (error) {
-            Log.error('Failed to cache attachment', {error});
-        }
-    }
+export function cacheAttachment(url, blob) {
+    attachmentCache.set(url, blob);
 }
 
 /**
- * Processes a message to handle attachments.
- * @param {string} message - The message to process.
-        const attachmentUrl = extractAttachmentUrl(message);
-        if (attachmentUrl) {
-            Log.info('Attachment URL found:', attachmentUrl);
-            // Cache the attachment URL
-            cacheAttachment(attachmentUrl);
+ * Retrieves an attachment from the cache by URL.
+ * @param {string} url - The URL of the attachment.
+ * @returns {Promise<Blob|null>} - The attachment data as a Blob, or null if not found.
+ */
+export async function getCachedAttachment(url) {
+    return attachmentCache.get(url);
+}
 
-            // Replace the markdown image syntax with a placeholder or handle as needed
-            return message.replace(/!\[.*?\]\((.*?)\)/g, '[Attachment]');
-        }
+/**
+ * Checks if an attachment is cached by URL.
+ * @param {string} url - The URL of the attachment.
+ * @returns {Promise<boolean>} - True if the attachment is cached, false otherwise.
+ */
+export async function isAttachmentCached(url) {
+    return attachmentCache.has(url);
+}
+
+/**
+ * Deletes an attachment from the cache by URL.
+ * @param {string} url - The URL of the attachment.
+ */
+export function deleteCachedAttachment(url) {
+    attachmentCache.delete(url);
+}
