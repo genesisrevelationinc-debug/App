@@ -1,44 +1,33 @@
 import lodashGet from 'lodash/get';
-import {FileUtils} from './fileDownload/FileUtils';
-import {CacheManager} from './cache/CacheManager';
+import {Log} from './DebugUtils';
+import {Cache} from './CacheUtils';
 /**
- * Extracts the file extension from a URL.
-    return FileUtils.getFile(url).then((fileBlob) => {
-        const fileObject = new File([fileBlob], file.name, {type: fileBlob.type});
-        const fileReader = new FileReader();
-
-        // Cache the file in Cache API
-        CacheManager.cacheFile(url, fileObject).then(() => {
-            console.log(`Cached file: ${url}`);
-        }).catch((error) => {
-            console.error(`Failed to cache file: ${url}`, error);
-        });
-
-        return fileObject;
-    });
+ * Extracts the attachment URL from a markdown image syntax.
+    return null;
 }
-
-function addMarkdownImageToCache(url) {
-    return FileUtils.getFile(url).then((fileBlob) => {
-        const fileObject = new File([fileBlob], 'markdown-image', {type: fileBlob.type});
-        CacheManager.cacheFile(url, fileObject).then(() => {
-            console.log(`Cached markdown image: ${url}`);
-        }).catch((error) => {
-            console.error(`Failed to cache markdown image: ${url}`, error);
-        });
-    });
-}
-        if (attachment.url) {
-            addAttachmentToCache(attachment, attachment.url);
+/**
+ * Caches the attachment URL in the Cache API.
+ * @param {string} url - The URL of the attachment to cache.
+ */
+async function cacheAttachment(url) {
+    if ('caches' in window) {
+        try {
+            await Cache.put(url, await fetch(url));
+        } catch (error) {
+            Log.error('Failed to cache attachment', {error});
         }
-    });
-
-    // Process markdown images
-    const markdownImageUrls = message.match(/!\[.*?\]\((.*?)\)/g);
-    if (markdownImageUrls) {
-        markdownImageUrls.forEach((markdownImage) => {
-            const url = markdownImage.match(/\((.*?)\)/)[1];
-            addMarkdownImageToCache(url);
-        });
     }
 }
+
+/**
+ * Processes a message to handle attachments.
+ * @param {string} message - The message to process.
+        const attachmentUrl = extractAttachmentUrl(message);
+        if (attachmentUrl) {
+            Log.info('Attachment URL found:', attachmentUrl);
+            // Cache the attachment URL
+            cacheAttachment(attachmentUrl);
+
+            // Replace the markdown image syntax with a placeholder or handle as needed
+            return message.replace(/!\[.*?\]\((.*?)\)/g, '[Attachment]');
+        }
