@@ -1,24 +1,31 @@
-import styles from '../../styles/styles';
-import withLocalize, {withLocalizePropTypes} from '../withLocalize';
-import withWindowDimensions, {windowDimensionsPropTypes} from '../withWindowDimensions';
-import {Dimensions} from 'react-native';
-const propTypes = {
-    ...withLocalizePropTypes,
-    const {translate} = props;
-    const {isSmallScreenWidth} = props.windowDimensions;
-    const {height} = Dimensions.get('window');
-    const modalStyle = [
-        styles.flex1,
-        {height: height - 50}, // Adjust the height to fill the screen minus some padding
-        styles.alignItemsCenter,
-        styles.justifyContentCenter,
-    ];
+import PropTypes from 'prop-types';
+import { View, Modal, StyleSheet, Image } from 'react-native';
+import { withWindowDimensions } from 'react-native-safe-area-context';
+import { Dimensions } from 'react-native';
+
+const ReceiptModal = ({ isVisible, onClose, receiptUrl, windowWidth, windowHeight }) => {
     return (
-        <Modal
-            animationType="slide"
-            transparent={false}
-            visible={props.isVisible}
-            style={styles.flex1}
-        >
-            <View style={modalStyle}>
-                <TouchableOpacity onPress={props.onClose} style={styles.closeButton}>
+                <View style={styles.modalContainer}>
+                    <Image
+                        source={{ uri: receiptUrl }}
+                        style={[styles.receiptImage, { height: windowHeight - 100 }]} // Adjust height to fill modal
+                    />
+                </View>
+            </View>
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    },
+    modalContainer: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 20,
+        alignItems: 'center',
+        width: '95%',
+    },
+    receiptImage: {
+        resizeMode: 'contain',
+        width: '100%',
+    },
+});
