@@ -4,23 +4,23 @@ import {withOnyx} from 'react-native-onyx';
 import {Dimensions} from 'react-native';
 
 const propTypes = {
-    isVisible: PropTypes.bool.isRequired,
-    modalContainer: {
+    receiptURL: PropTypes.string.isRequired,
+    modal: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
-    receiptImage: {
-        width: '100%',
+    image: {
+        width: Dimensions.get('window').width,
         height: Dimensions.get('window').height,
     },
 });
 
-            <View style={styles.modalContainer}>
+            <View style={styles.modal}>
                 <Image
-                    source={{uri: props.receiptUrl}}
-                    style={[styles.receiptImage, {resizeMode: 'contain'}]}
+                    source={{uri: receiptURL}}
+                    style={styles.image}
                 />
             </View>
         </Modal>
