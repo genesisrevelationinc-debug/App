@@ -5,22 +5,28 @@ import {Dimensions} from 'react-native';
 
 const propTypes = {
     receiptURL: PropTypes.string.isRequired,
-    modal: {
+    isVisible: false,
+};
+
+const {height} = Dimensions.get('window');
+
+const ReceiptModal = (props) => {
+    return (
+        <Modal
+                <View style={styles.container}>
+                    <Image
+                        source={{uri: props.receiptURL}}
+                        style={[styles.image, {height: height - 100}]} // Adjust height to fill modal
+                    />
+                </View>
+            </View>
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
     },
     image: {
-        width: Dimensions.get('window').width,
-        height: Dimensions.get('window').height,
+        resizeMode: 'contain',
+        width: '95%',
     },
 });
-
-            <View style={styles.modal}>
-                <Image
-                    source={{uri: receiptURL}}
-                    style={styles.image}
-                />
-            </View>
-        </Modal>
