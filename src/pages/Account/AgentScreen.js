@@ -7,7 +7,19 @@ const AgentScreen = () => {
     return (
         <ScreenWrapper>
             <AgentScreen />
-            <AgentActions />
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 16}}>
+                <Button
+                    success
+                    text="Chat with Agent"
+                    onPress={() => {}}
+                />
+                <Button
+                    success
+                    text="Copilot to Agent"
+                    onPress={() => {}}
+                />
+            </View>
+        </View>
         </ScreenWrapper>
     );
 };
