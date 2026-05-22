@@ -1,1 +1,3 @@
-amount || originalAmount
+if (!amount) {
+    return originalAmount;
+}
