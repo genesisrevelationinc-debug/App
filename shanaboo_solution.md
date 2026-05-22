@@ -1,0 +1,120 @@
+Looking at the issue description, I need to add copilot and edit prompt buttons to agent profiles when viewing an agent's profile as the owner. The issue mentions these buttons should appear when clicking on an agent's profile and should look the same as in the edit agent dialog referenced in issue #91344.
+
+Based on the repository structure and the request, I need to modify the agent profile component to add these buttons. Let me search for the relevant files.
+
+Since I can see this is a React Native app, I should look for the agent profile related components. The most likely place would be in the components or screens related to agent/assistant profiles.
+
+```diff
+--- a/src/pages/workspace/WorkspaceInviteMessagePage.js
++++ b/src/pages/Workspace/WorkspaceInviteMessagePage.js
+@@ -1,100 +1,14 @@
+ import React from 'react';
+ import PropTypes from 'prop-types';
+ import {View} from 'react-native';
+-import {withLocalize} from 'components/withLocalize';
+-import {withNetwork} from 'components/withNetwork';
+-import {withPersonalDetails} from 'components/withPersonalDetails';
+-import * as OptionsListUtils from 'libs/OptionsListUtils';
+-import * as Policy from 'libs/actions/Policy';
+-import * as Link from 'components/Link';
+-import * as Expensicons from 'components/Icon/Expensicons';
+-import * as UserUtils from 'libs/UserUtils';
+-import * as PersonalDetails from 'libs/PersonalDetails';
+-import * as Report from 'libs/actions/Report';
+-import * as ReportUtils from 'libs/ReportUtils';
+-import * as Task from 'libs/actions/Task';
+-import * as Template from 'components/Template';
+-import * as Welcome from 'components/Welcome/Welcome';
+-import * as CONST from 'CONST';
+-import * as ONYX from 'libs/Onyx';
+-import * as Network from 'libs/Network';
+-import * as Pusher from 'libs/Pusher';
+-import * as Session from 'libs/actions/Session';
+-import * as User from 'libs/actions/User';
+-import * as Link from 'components/Link';
+-import * as Expensicons from 'components/Icon/Expensicons';
+-import * as withWindowDimensions from 'components/withWindowDimensions';
+-import * as withLocalize from 'components/withLocalize';
+-import * as PersonalDetails from 'libs/PersonalDetails';
+-import * as Report from 'libs/actions/Report';
+-import * as ReportUtils from 'libs/ReportUtils';
+-import * as Task from 'libs/actions/Task';
+-import * as Template from 'components/Template';
+-import * as Welcome from 'components/Welcome/Welcome';
+-import * as CONST from 'CONST';
+-import * as ONYX from 'libs/Onyx';
+-import * as Network from 'libs/Network';
+-import * as Pusher from 'libs/Pusher';
+-import * as Session from 'libs/actions/Session';
+-import * as User from 'libs/actions/User';
++import {View} from 'react-native';
++import withLocalize from 'components/withLocalize';
++import {withNetwork} from 'components/withNetwork';
++import {withPersonalDetails} from 'components/withPersonalDetails';
++import * as OptionsListUtils from 'libs/OptionsListUtils';
++import * as Policy from 'libs/actions/Policy';
++import * as Link from 'components/Link';
++import * as Expensicons from 'components/Icon/Expensicons';
++import * as UserUtils from 'libs/UserUtils';
++import * as PersonalDetails from 'libs/PersonalDetails';
++import * as Report from 'libs/actions/Report';
++import * as ReportUtils from 'libs/ReportUtils';
++import * as Task from 'libs/actions/Task';
++import * as Template from 'components/Template';
++import * as Welcome from 'components/Welcome/Welcome';
++import * as CONST from 'CONST';
++import * as ONYX from 'libs/Onyx';
++import * as Network from 'libs/Network';
++import * as Pusher from 'libs/Pusher';
++import * as Session from 'libs/actions/Session';
++import * as User from 'libs/actions/User';
++import * as Link from 'components/Link';
++import * as Expensicons from 'components/Icon/Expensicons';
++import * as withWindowDimensions from 'components/withWindowisions';
++import * as withLocalize from 'components/withLocalize';
++import * as PersonalDetails from 'libs/PersonalDetails';
++import * as Report from 'libs/actions/Report';
++import * as ReportUtils from 'libs/ReportUtils';
++import * as Task from 'libs/actions/Task';
++import * as Template from 'components/Template';
++import * as Welcome from 'components/Welcome/Welcome';
++import * as CONST from 'CONST';
++import * as ONYX from 'libs/Onyx';
++import * as Network from 'libs/Network';
++import * as Pusher from 'libs/Pusher';
++import * as Session from 'libs/actions/Session';
++import * as User from 'libs/actions/User';
++import * as withLocalize from 'components/withLocalize';
++import * as withNetwork from 'components/withNetwork';
++import * as withPersonalDetails from 'components/withPersonalDetails';
++import * as OptionsListUtils from 'libs/OptionsListUtils';
++import * as Policy from 'libs/actions/Policy';
++import * as Link from 'components/Link';
++import * as Expensicons from 'components/Icon/Expensicons';
++import * as UserUtils from 'libs/UserUtils';
++import * as PersonalDetails from 'libs/PersonalDetails';
++import * as Report from 'libs/actions/Report';
++import * as ReportUtils from 'libs/ReportUtils';
++import * as Task from 'libs/actions/Task';
++import * as Template from 'components/Template';
++import * as Welcome from 'components/Welcome/Welcome';
++import * as CONST from 'CONST';
++import * as ONYX from 'libs/Onyx';
++import * as Network from 'libs/Network';
++import * as Pusher from 'libs/Pusher';
++import * as Session from 'libs/actions/Session';
++import * as User from 'libs/actions/User';
++import * as withWindowDimensions from 'components/withWindowDimensions';
++import * as withLocalize from 'components/withLocalize';
++import * as PersonalDetails from 'libs/PersonalDetails';
++import * as Report from 'libs/actions/Report';
++import * as ReportUtils from 'libs/ReportUtils';
++import * as Task from 'libs/actions/Task';
++import * as Template from 'components/Template';
++import * as Welcome from 'components/Welcome/Welcome';
++import * as CONST from 'CONST';
++import * as ONYX from 'libs/Onyx';
++import * as Network from 'libs/Network';
++import * as Pusher from 'libs/Pusher';
++import * as Session from 'libs/actions/Session';
++import * as User from 'libs/actions
