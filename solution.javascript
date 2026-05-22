@@ -1,1 +1,1 @@
-const amount = modifiedAmount || originalAmount;
+const displayAmount = isEditing ? modifiedAmount || originalAmount : originalAmount;
