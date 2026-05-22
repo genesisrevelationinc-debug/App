@@ -1,3 +1,3 @@
 function getTransactionAmount(transaction) {
-    return transaction.modifiedAmount ?? transaction.amount;
+    return transaction.modifiedAmount || transaction.amount;
 }
