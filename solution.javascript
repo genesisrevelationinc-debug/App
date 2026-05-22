@@ -1,3 +1,3 @@
-if (!amount) {
-    return originalAmount;
+function getTransactionAmount(transaction) {
+    return transaction.modifiedAmount ?? transaction.amount;
 }
