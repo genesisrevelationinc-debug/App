@@ -1,1 +1,1 @@
-const amount = modifiedAmount || originalAmount;
+const displayAmount = transaction.amount || transaction.originalAmount;
