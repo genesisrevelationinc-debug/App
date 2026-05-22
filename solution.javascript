@@ -1,1 +1,1 @@
-const displayAmount = modifiedAmount || originalAmount;
+amount || originalAmount
