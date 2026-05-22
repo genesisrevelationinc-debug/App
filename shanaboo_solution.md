@@ -8,136 +8,120 @@
  import {useOnyx} from 'react-native-onyx';
  import ConfirmModal from '@components/ConfirmModal';
  import HeaderWithBackButton from '@components/HeaderWithBackButton';
-@@ -9,6 +9,7 @@ import MenuItem from '@components/MenuItem';
- import MenuItemWithTopDescription from '@components/MenuItemWithTopDescription';
- import ScreenWrapper from '@components/ScreenWrapper';
- import ScrollView from '@components/ScrollView';
-+import useCurrentUserAccountID from '@hooks/useCurrentUserAccountID';
+@@ -10,6 +10,7 @@ import ScrollView from '@components/ScrollView';
+ import Text from '@components/Text';
+ import TextLink from '@components/TextLink';
  import useLocalize from '@hooks/useLocalize';
++import usePolicy from '@hooks/usePolicy';
  import useThemeStyles from '@hooks/useThemeStyles';
- import {clearAllRelatedToAgent} from '@libs/actions/Agent';
-@@ -16,6 +17,7 @@ import {clearAllRelatedToAgent} from '@libs/actions/Agent';
- import {getLatestErrorMessage} from '@libs/ErrorUtils';
+ import {clearAllData} from '@libs/actions/App';
+ import {closeAccount} from '@libs/actions/CloseAccount';
+@@ -18,6 +19,7 @@ import {getLatestErrorMessage} from '@libs/ErrorUtils';
  import Navigation from '@libs/Navigation/Navigation';
- import {getPersonalDetailByEmail} from '@libs/PersonalDetailsUtils';
-+import {getReportIDForChat} from '@libs/ReportUtils';
- import {getDomainName} from '@libs/UserUtils';
- import {clearErrorField, updateErrorField} from '@userActions/FormActions';
- import {requestAccountDeletion} from '@userActions/User';
-@@ -23,6 +25,7 @@ import CONST from '@src/CONST';
- import ONYXKEYS from '@src/ONYXKEYS';
- import ROUTES from '@src/ROUTES';
- import type {Agent} from '@src/types/onyx';
-+import {navigateToAndOpenReport} from '@userActions/Report';
- import AddDelegate from './AddDelegate';
- import type {SecuritySettingsPageProps} from './types';
+ import {getAccountManager, getDomainName, getLoginList, getLoginListItem, getPhoneNumber, getSecondaryLogins, getUserDetails, isAdmin, isDomainControlled, isMember} from '@libs/PersonalDetailsUtils';
+ import {hasCustomContactMethod} from '@libs/UserUtils';
++import {navigateToConciergeChat} from '@libs/actions/Report';
+ import {close} from '@userActions/Session';
+ import {toggleTwoFactorAuth} from '@userActions/TwoFactorAuth';
+ import {getUserValidateCodeLink} from '@userActions/User';
+@@ -29,6 +31,7 @@ import type {SecuritySettingsPageProps} from './types';
  
-@@ -33,6 +36,7 @@ function SecuritySettingsPage({route, navigation}: SecuritySettingsPageProps) {
-     const [isDeleteDelegateConfirmModalVisible, setIsDeleteDelegateConfirmModalVisible] = useState(false);
-     const [isRemoveAccountModalOpen, setIsRemoveAccountModalOpen] = useState(false);
-     const [isLoading, setIsLoading] = useState(false);
-+    const {currentUserAccountID} = useCurrentUserAccountID();
- 
+ function SecuritySettingsPage({route}: SecuritySettingsPageProps) {
+     const {translate} = useLocalize();
++    const policy = usePolicy();
+     const styles = useThemeStyles();
      const [account] = useOnyx(ONYXKEYS.ACCOUNT);
      const [loginList] = useOnyx(ONYXKEYS.LOGIN_LIST);
-@@ -72,6 +76,24 @@ function SecuritySettingsPage({route, navigation}: SecuritySettingsPageProps) {
-         [account?.delegates, loginList],
+@@ -42,6 +45,7 @@ function SecuritySettingsPage({route}: SecuritySettingsPageProps) {
+     const [isCloseAccountModalOpen, setIsCloseAccountModalOpen] = useState(false);
+     const [isSigningOut, setIsSigningOut] = useState(false);
+     const [isSigningOutAndClosingAccount, setIsSigningOutAndClosingAccount] = useState(false);
++    const [isCopiloting, setIsCopiloting] = useState(false);
+ 
+     const isUserAdmin = isAdmin(currentUserDetails);
+     const isUserMember = isMember(currentUserDetails);
+@@ -131,6 +135,28 @@ function SecuritySettingsPage({route}: SecuritySettingsPageProps) {
+         [translate, currentUserDetails?.login, currentUserDetails?.accountID, isSigningOut, isSigningOutAndClosingAccount, styles],
      );
  
-+    const handleChatWithAgent = useCallback((agent: Agent) => {
-+        const personalDetail = getPersonalDetailByEmail(agent.email);
-+        if (!personalDetail?.accountID) {
++    const handleChatWithAgent = useCallback(() => {
++        if (!accountManager?.accountID) {
 +            return;
 +        }
-+        const reportID = getReportIDForChat(currentUserAccountID, [personalDetail.accountID]);
-+        if (reportID) {
-+            InteractionManager.runAfterInteractions(() => {
-+                navigateToAndOpenReport([personalDetail.accountID], false);
-+            });
-+        }
-+    }, [currentUserAccountID]);
++        navigateToConciergeChat(accountManager.accountID);
++    }, [accountManager?.accountID]);
 +
-+    const handleCopilotWithAgent = useCallback((agent: Agent) => {
-+        // Navigate to copilot flow with the agent's account
-+        const personalDetail = getPersonalDetailByEmail(agent.email);
-+        Navigation.navigate(ROUTES.SETTINGS_COPILOT.getRoute(personalDetail?.accountID ?? agent.email));
-+    }, []);
++    const handleCopilotWithAgent = useCallback(() => {
++        if (!accountManager?.email) {
++            return;
++        }
++        setIsCopiloting(true);
++        InteractionManager.runAfterInteractions(() => {
++            // Navigate to copilot flow - this will be handled by the copilot action
++            Navigation.navigate(ROUTES.COPILOT.getRoute(accountManager.email));
++            setIsCopiloting(false);
++        });
++    }, [accountManager?.email]);
++
++    const shouldShowAgentButtons = useMemo(() => {
++        return !!accountManager?.accountID && !!accountManager?.email;
++    }, [accountManager]);
 +
      const menuItems = useMemo(() => {
-         const items = [
+         const baseMenuItems = [
              {
-@@ -162,6 +184,8 @@ function SecuritySettingsPage({route, navigation}: SecuritySettingsPageProps) {
-                         agent={selectedAgent}
-                         onClose={() => setSelectedAgent(null)}
-                         onDelete={() => setIsDeleteDelegateConfirmModalVisible(true)}
-+                        onChat={() => handleChatWithAgent(selectedAgent)}
-+                        onCopilot={() => handleCopilotWithAgent(selectedAgent)}
-                     />
-                 )}
-                 <ConfirmModal
-@@ -196,6 +220,8 @@ function SecuritySettingsPage({route, navigation}: SecuritySettingsPageProps) {
-                             key={agent.email}
-                             agent={agent}
-                             onPress={() => setSelectedAgent(agent)}
-+                            onChat={() => handleChatWithAgent(agent)}
-+                            onCopilot={() => handleCopilotWithAgent(agent)}
-                         />
-                     ))}
-                 </View>
-@@ -209,6 +235,8 @@ function SecuritySettingsPage({route, navigation}: SecuritySettingsPageProps) {
-                         agent={selectedAgent}
-                         onClose={() => setSelectedAgent(null)}
-                         onDelete={() => setIsDeleteDelegateConfirmModalVisible(true)}
-+                        onChat={() => handleChatWithAgent(selectedAgent)}
-+                        onCopilot={() => handleCopilotWithAgent(selectedAgent)}
-                     />
-                 )}
-                 <ConfirmModal
---- a/src/pages/settings/Security/AgentListItem.tsx
-+++ b/src/pages/settings/Security/AgentListItem.tsx
-@@ -1,5 +1,6 @@
- import React from 'react';
- import {View} from 'react-native';
-+import Button from '@components/Button';
- import Icon from '@components/Icon';
- import * as Expensicons from '@components/Icon/Expensicons';
- import PressableWithFeedback from '@components/Pressable/PressableWithFeedback';
-@@ -14,9 +15,11 @@ import type {AgentListItemProps} from './types';
- type AgentListItemProps = {
-     agent: Agent;
-     onPress: () => void;
-+    onChat: () => void;
-+    onCopilot: () => void;
- };
- 
--function AgentListItem({agent, onPress}: AgentListItemProps) {
-+function AgentListItem({agent, onPress, onChat, onCopilot}: AgentListItemProps) {
-     const styles = useThemeStyles();
-     const {translate} = useLocalize();
-     const personalDetail = getPersonalDetailByEmail(agent.email);
-@@ -49,6 +52,22 @@ function AgentListItem({agent, onPress}: AgentListItemProps) {
-                         />
+@@ -213,6 +239,32 @@ function SecuritySettingsPage({route}: SecuritySettingsPageProps) {
+                         <Text style={[styles.textLabelSupporting, styles.mt1]}>{translate('securityPage.accountManager.subtitle')}</Text>
                      </View>
-                 </View>
-+                <View style={[styles.flexRow, styles.gap2, styles.mt2]}>
-+                    <Button
-+                        small
-+                        text={translate('common.chat')}
-+                        onPress={(e) => {
-+                            e?.stopPropagation();
-+                            onChat();
-+                        }}
-+                    />
-+                    <Button
-+                        small
-+                        text={translate('common.copilot')}
-+                        onPress={(e) => {
-+                            e?.stopPropagation();
-+                            onCopilot();
-+                        }}
-+                    />
-+                </View>
-             </View>
-         </PressableWithFeedback>
-     );
---- a/src/pages/settings
+                 )}
++                {shouldShowAgentButton && (
++                    <View style={[styles.flexRow, styles.gap2, styles.mt3]}>
++                        <Button
++                            text={translate('securityPage.accountManager.chat')}
++                            onPress={handleChatWithAgent}
++                            style={styles.flex1}
++                        />
++                        <Button
++                            text={translate('securityPage.accountManager.copilot')}
++                            onPress={handleCopilotWithAgent}
++                            isLoading={isCopiloting}
++                            style={styles.flex1}
++                        />
++                    </View>
++                )}
+             </ScrollView>
+             <ConfirmModal
+                 title={translate('common.areYouSure')}
+@@ -232,4 +284,4 @@ function SecuritySettingsPage({route}: SecuritySettingsPageProps) {
+ 
+ SecuritySettingsPage.displayName = 'SecuritySettingsPage';
+ 
+-export default SecuritySettingsPage;
++export default SecuritySettingsPage;
+\ No newline at end of file
+--- a/src/pages/settings/Security/AddDelegate/ConfirmModal.tsx
++++ b/src/pages/settings/Security/AddDelegate/ConfirmModal.tsx
+@@ -1,5 +1,5 @@
+ import React, {useCallback, useMemo, useState} from 'react';
+-import {View} from 'react-native';
++import {InteractionManager, View} from 'react-native';
+ import {useOnyx} from 'react-native-onyx';
+ import Button from '@components/Button';
+ import ConfirmModal from '@components/ConfirmModal';
+@@ -10,6 +10,7 @@ import useLocalize from '@hooks/useLocalize';
+ import useThemeStyles from '@hooks/useThemeStyles';
+ import {addDelegate, requestValidateCodeAction, updateDelegate} from '@libs/actions/Delegate';
+ import {getLatestErrorMessage} from '@libs/ErrorUtils';
++import {navigateToConciergeChat} from '@libs/actions/Report';
+ import Navigation from '@libs/Navigation/Navigation';
+ import {validateCodeActionErrorMessage} from '@libs/ValidateCodeUtils';
+ import {clearDelegateErrors} from '@userActions/Delegate';
+@@ -31,6 +32,7 @@ function ConfirmModal({onClose, delegateEmail, delegateRole, accessLevel, existin
+     const [isValidateCodeActionModalVisible, setIsValidateCodeActionModalVisible] = useState(false);
+     const [isLoadingForm, setIsLoadingForm] = useState(false);
+     const [isAddingDelegate, setIsAddingDelegate] = useState(false);
++    const [isCopiloting, setIsCopiloting] = useState(false);
+     const [formError, setFormError] = useState('');
+ 
+     const validateAndSubmitForm = useCallback(() => {
+@@ -91,6 +93,24 @@
