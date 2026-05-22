@@ -1,13 +1,34 @@
-import type {CONST as COMMON_CONST} from 'expensify-common';
-import type {OnyxEntry, OnyxUpdate} from 'react-native-onyx';
+import type {OnyxUpdate} from 'react-native-onyx';
 import Onyx from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
 import * as API from '@libs/API';
-import type {ConnectPolicyToAccountingIntegrationParams, UpdateQuickbooksOnlineAccountingMethodParams} from '@libs/API/parameters';
-import type UpdateQuickbooksOnlineAutoCreateVendorParams from '@libs/API/parameters/UpdateQuickbooksOnlineAutoCreateVendorParams';
-import type UpdateQuickbooksOnlineGenericTypeParams from '@libs/API/parameters/UpdateQuickbooksOnlineGenericTypeParams';
-import {READ_COMMANDS, WRITE_COMMANDS} from '@libs/API/types';
-import {getCommandURL} from '@libs/ApiUtils';
+import type {Transaction} from '@src/types/onyx';
+import type {ExportIntegration} from '@src/types/onyx/Policy';
+import * as ErrorUtils from '@libs/ErrorUtils';
+import ONYXKEYS from '@src/ONYXKEYS';
+
+/**
+ * Validates that a transaction is not orphaned/ghost before export.
+ * An orphaned transaction exists in a report but cannot be opened or modified.
+ */
+function isValidTransactionForExport(transaction: Transaction | undefined): boolean {
+    if (!transaction) {
+        return false;
+    }
+    
+    // Check for indicators of an orphaned/ghost transaction
+    // These transactions often have minimal data and show as "(untagged)"
+    if (transaction.isDeleted) {
+        return false;
+    }
+    
+    // A valid transaction should have a non-empty created date
+    // and should not be in a broken state
+    return !!(transaction.created && transaction.transactionID);
+}
+
+function getQuickbooksOnlineSetupLink(policyID: string) {
+    return API.read(
+        'GetQuickbooksOnlineSetupLink',
 import * as ErrorUtils from '@libs/ErrorUtils';
 import Log from '@libs/Log';
 import {isPolicyAdmin} from '@libs/PolicyUtils';
@@ -22,12 +43,13 @@ function getQuickbooksOnlineSetupLink(policyID: string) {
         command: READ_COMMANDS.CONNECT_POLICY_TO_QUICKBOOKS_ONLINE,
         shouldSkipWebProxy: true,
     });
-    return commandURL + new URLSearchParams(params).toString();
-}
-
-function shouldShowQBOReimbursableExportDestinationAccountError(policy: OnyxEntry<Policy>): boolean {
-    const qboConfig = policy?.connections?.quickbooksOnline?.config;
-    return isPolicyAdmin(policy) && !!qboConfig?.reimbursableExpensesExportDestination && !qboConfig.reimbursableExpensesAccount;
+    reportID: string,
+    connectionName: string,
+    integrationToDisable?: ExportIntegration,
+    transactions?: Record<string, Transaction>,
+) {
+    const optimisticData: OnyxUpdate[] = [
+        {
 }
 
 function buildOnyxDataForMultipleQuickbooksConfigurations<TConfigUpdate extends Partial<Connections['quickbooksOnline']['config']>>(
@@ -53,17 +75,19 @@ function buildOnyxDataForMultipleQuickbooksConfigurations<TConfigUpdate extends 
         },
     ];
 
-    const failureData: Array<OnyxUpdate<typeof ONYXKEYS.COLLECTION.POLICY>> = [
-        {
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
-            value: {
-                connections: {
+        reportID,
+        connectionName,
+        integrationToDisable,
+        transactions,
+    });
+}
+
                     [CONST.POLICY.CONNECTIONS.NAME.QBO]: {
-                        config: {
-                            ...configCurrentData,
-                            pendingFields: Object.fromEntries(Object.keys(configUpdate).map((settingName) => [settingName, null])),
-                            errorFields: Object.fromEntries(
+    getQuickbooksOnlineSetupLink,
+    exportReportToQuickbooksOnline,
+    updateQuickbooksOnlineAutoSync,
+    isValidTransactionForExport,
+};
                                 Object.keys(configUpdate).map((settingName) => [settingName, ErrorUtils.getMicroSecondOnyxErrorWithTranslationKey('common.genericErrorMessage')]),
                             ),
                         },
@@ -102,11 +126,14 @@ function buildOnyxDataForQuickbooksConfiguration<TSettingName extends keyof Conn
     settingValue: Partial<Connections['quickbooksOnline']['config'][TSettingName]>,
     oldSettingValue?: Partial<Connections['quickbooksOnline']['config'][TSettingName]>,
 ) {
-    const exporterOptimisticData = settingName === CONST.QUICKBOOKS_CONFIG.EXPORT ? {exporter: settingValue} : {};
-    const exporterErrorData = settingName === CONST.QUICKBOOKS_CONFIG.EXPORT ? {exporter: oldSettingValue} : {};
+    const exporter = settingName === CONST.QUICKBOOKS_CONFIG.EXPORT && settingValue && typeof settingValue === 'object' && 'exporter' in settingValue ? settingValue.exporter : undefined;
+    const exporterOptimisticData = typeof exporter === 'string' ? {exporter} : {};
+
+    const oldExporter =
+        settingName === CONST.QUICKBOOKS_CONFIG.EXPORT && oldSettingValue && typeof oldSettingValue === 'object' && 'exporter' in oldSettingValue ? oldSettingValue.exporter : undefined;
+    const exporterErrorData = typeof oldExporter === 'string' ? {exporter: oldExporter} : {};
 
     const optimisticData: Array<OnyxUpdate<typeof ONYXKEYS.COLLECTION.POLICY>> = [
-        // @ts-expect-error - will be solved in https://github.com/Expensify/App/issues/73830
         {
             onyxMethod: Onyx.METHOD.MERGE,
             key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
@@ -130,7 +157,6 @@ function buildOnyxDataForQuickbooksConfiguration<TSettingName extends keyof Conn
     ];
 
     const failureData: Array<OnyxUpdate<typeof ONYXKEYS.COLLECTION.POLICY>> = [
-        // @ts-expect-error - will be solved in https://github.com/Expensify/App/issues/73830
         {
             onyxMethod: Onyx.METHOD.MERGE,
             key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
@@ -486,6 +512,16 @@ function updateQuickbooksOnlinePreferredExporter<TSettingValue extends Connectio
     API.write(WRITE_COMMANDS.UPDATE_QUICKBOOKS_ONLINE_EXPORT, parameters, onyxData);
 }
 
+function updateQuickbooksOnlineTravelInvoicingPayableAccount(policyID: string, accountID: string, oldAccountID?: string) {
+    const onyxData = buildOnyxDataForQuickbooksConfiguration(policyID, CONST.QUICKBOOKS_CONFIG.TRAVEL_INVOICING_PAYABLE_ACCOUNT, accountID, oldAccountID);
+    const parameters: UpdateQuickbooksOnlineGenericTypeParams = {
+        policyID,
+        settingValue: accountID,
+        idempotencyKey: String(CONST.QUICKBOOKS_CONFIG.TRAVEL_INVOICING_PAYABLE_ACCOUNT),
+    };
+    API.write(WRITE_COMMANDS.UPDATE_QUICKBOOKS_ONLINE_TRAVEL_INVOICING_PAYABLE_ACCOUNT, parameters, onyxData);
+}
+
 export {
     shouldShowQBOReimbursableExportDestinationAccountError,
     getQuickbooksOnlineSetupLink,
@@ -507,4 +543,5 @@ export {
     updateQuickbooksOnlineSyncLocations,
     updateQuickbooksOnlineSyncCustomers,
     updateQuickbooksOnlineAccountingMethod,
+    updateQuickbooksOnlineTravelInvoicingPayableAccount,
 };
