@@ -1,3 +1,1 @@
-const getTransactionAmount = (transaction) => {
-  return transaction.modifiedAmount || transaction.amount;
-};
+const amount = modifiedAmount || originalAmount;
