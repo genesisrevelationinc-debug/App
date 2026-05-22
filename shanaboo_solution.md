@@ -1,0 +1,1 @@
+<|tool_calls_section_begin|><|tool_call_begin|>functions.find_file:0<|tool_call_argument_begin|>{"pattern": "**/*Travel*"}<|tool_call_end|><|tool_call_begin|>functions.find_file:1<|tool_call_argument_begin|>{"pattern": "**/*travel*"}<|tool_call_end|><|tool_calls_section_end|>
