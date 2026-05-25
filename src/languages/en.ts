@@ -1,33 +1,33 @@
-        bankAccount: {
-            status: {
-                active: 'Active',
-                incomplete: 'Incomplete',
-                pending: 'Pending',
-                verifying: 'Verifying',
-                locked: 'Locked',
-            },
-            description: {
-                incomplete: 'Finish adding bank account',
-                pending: 'Please confirm test transactions',
-                verifying: "We're reviewing your documentation",
-                locked: 'This account requires attention',
-            },
-            button: {
-                finish: 'Finish',
-                confirm: 'Confirm',
-                unlock: 'Unlock',
-            },
+    bankAccount: {
+        status: {
+            active: 'Active',
+            incomplete: 'Incomplete',
+            pending: 'Pending',
+            verifying: 'Verifying',
+            locked: 'Locked',
         },
-        card: {
-            status: {
-                active: 'Active',
-                inactive: 'Inactive',
-            },
-            fixConnection: 'Please fix this connection',
-            fixConnectionAdmin: 'Please fix this connection in Company Cards',
-            askAdminFix: 'Please ask an admin to fix this connection',
-            lastSync: 'Last synced',
+        description: {
+            incomplete: 'Finish adding bank account',
+            pending: 'Please confirm test transactions',
+            verifying: "We're reviewing your documentation",
+            locked: 'This account requires attention',
         },
+        button: {
+            finish: 'Finish',
+            confirm: 'Confirm',
+            unlock: 'Unlock',
+        },
+    },
+    card: {
+        status: {
+            active: 'Active',
+            inactive: 'Inactive',
+        },
+        fixConnection: 'Please fix this connection',
+        fixConnectionAdmin: 'Please fix this connection in Company Cards',
+        fixConnectionEmployee: 'Please ask an admin to fix this connection',
+        lastSync: 'Last sync',
+    },
 import {CONST as COMMON_CONST} from 'expensify-common';
 import startCase from 'lodash/startCase';
 import type {ValueOf} from 'type-fest';
