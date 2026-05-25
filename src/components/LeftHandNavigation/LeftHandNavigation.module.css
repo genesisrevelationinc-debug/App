@@ -14,7 +14,21 @@
     display: flex;
     align-items: center;
     padding: 12px 0;
-    border-bottom-width: 1px;
     margin: 0 20px;
-    border-bottom-style: solid;
+    border-bottom: 1px solid;
+}
+
+.sidebarIcon {
+    width: 20px;
+    text-align: center;
+}
+
+.sidebarLabelCollapsed {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebarLabelVisible {
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
