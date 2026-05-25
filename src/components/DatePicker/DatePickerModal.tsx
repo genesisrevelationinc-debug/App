@@ -1,17 +1,16 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {View} from 'react-native';
 import type {StyleProp, ViewStyle} from 'react-native';
-import {useIsFocused} from '@react-navigation/native';
+import {AccessibilityInfo} from 'react-native';
 import DatePicker from '@components/DatePicker';
 import FormHelpMessage from '@components/FormHelpMessage';
 import Modal from '@components/Modal';
 import {setDraftValues} from '@userActions/FormActions';
-import useLocalize from '@hooks/useLocalize';
-import useThemeStyles from '@hooks/useThemeStyles';
 import CONST from '@src/CONST';
-import Accessibility from '@libs/Accessibility';
-type DatePickerModalProps = {
-    /** Whether the modal is visible */
+import CalendarPicker from './CalendarPicker';
+import type {DatePickerProps} from './types';
+
+const DEFAULT_ANCHOR_ORIGIN = {
     horizontal: CONST.MODAL.ANCHOR_ORIGIN_HORIZONTAL.RIGHT,
     vertical: CONST.MODAL.ANCHOR_ORIGIN_VERTICAL.TOP,
 };
@@ -47,7 +46,7 @@ function DatePickerModal({
     const styles = useThemeStyles();
     const {translate} = useLocalize();
     const datePickerRef = useRef<DatePicker>(null);
-    const isFocused = useIsFocused();
+    const hasAnnouncedRef = useRef(false);
     const [selectedDate, setSelectedDate] = useState<Date | string>(value ?? new Date());
     const [errorMessage, setErrorMessage] = useState('');
     useEffect(() => {
@@ -57,11 +56,13 @@ function DatePickerModal({
     }, [value]);
 
     useEffect(() => {
-        if (isVisible && isFocused) {
-            Accessibility.announceForAccessibility(translate('common.calendarOpened'));
+        if (isVisible && !hasAnnouncedRef.current) {
+            AccessibilityInfo.announceForAccessibility(translate('common.calendarOpened'));
+            hasAnnouncedRef.current = true;
+        } else if (!isVisible) {
+            hasAnnouncedRef.current = false;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isVisible, isFocused]);
+    }, [isVisible, translate]);
     const handleDateChange = useCallback(
         (date: Date) => {
     }, [formID, inputID, selectedDate, shouldSaveDraft, value]);
