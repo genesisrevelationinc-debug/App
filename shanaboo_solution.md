@@ -1,163 +1,127 @@
 ```diff
 --- a/src/CONST.ts
 +++ b/src/CONST.ts
-@@ -1234,6 +1234,7 @@ const CONST = {
-             VERIFIED: 'verified',
+@@ -1234,6 +1234,7 @@
+         VERIFIED: 'verified',
+         RERUN_ONBOARDING: 'rerunOnboarding',
+         ACTION_REQUIRED: 'actionRequired',
++        GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'globalReimbursementBankAccountSigner',
+     },
+ 
+     ONYXKEYS: {
+@@ -1256,6 +1257,7 @@
+         NVP_ONBOARDING: 'nvp_onboarding',
+         NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+         NVP_TRYNEWDOT: 'nvp_tryNewDot',
++        NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+ 
+         // This is an object with UTM params that we use to handle certain navigation logic (like redirects to OldDot)
+         NVP_INTRO_SELECTED: {
+@@ -1274,6 +1276,7 @@
+             INTRO_SELECTED: 'private_introSelected',
+             ONBOARDING: 'private_onboarding',
+             TRYNEWDOT: 'private_tryNewDot',
++            GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'private_globalReimbursementBankAccountSigner',
          },
-         SIGNER_INFO: 'signerInfo',
-+        SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         STEP: {
-             // in the request from "Plaid" we are using "Account" instead of "AccountNumber"
-             ACCOUNT_NUMBER: 'AccountNumber',
-@@ -1256,6 +1257,7 @@ const CONST = {
-             PERSONAL_INFORMATION: 'PersonalInformation',
-             SIGNER_INFO: 'SignerInfo',
-             VERIFICATION: 'Verification',
-+            SIGNER_INFO_PROMPT: 'SignerInfoPrompt',
+ 
+         // This is an object with UTM params that we use to handle certain navigation logic (like redirects to OldDot)
+@@ -1294,6 +1297,7 @@
+             NVP_ONBOARDING: 'private_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'private_onboarding_purpose',
+             NVP_TRYNEWDOT: 'private_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'private_globalReimbursementBankAccountSigner',
          },
-         SUBSTEPS: {
-             MANUAL: 'manual',
-@@ -1276,6 +1278,7 @@ const CONST = {
-             PERSONAL_INFORMATION: 'personalInformation',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1314,6 +1318,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_POSSIBLE_CHARACTERS_ROUTING_NUMBER: 17,
-         MAX_POSSIBLE_CHARACTERS_ACCOUNT_NUMBER: 16,
-@@ -1310,6 +1313,7 @@ const CONST = {
-         TYPE: {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1334,6 +1339,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         VERIFICATIONS: {
-             EXTERNAL: 'external',
-@@ -1323,6 +1327,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1354,6 +1360,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1340,6 +1345,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1374,6 +1381,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1357,6 +1363,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1394,6 +1402,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1374,6 +1381,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1414,6 +1423,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1391,6 +1399,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1434,6 +1444,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1408,6 +1417,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1454,6 +1465,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1425,6 +1435,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1474,6 +1486,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1442,6 +1453,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1494,6 +1507,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1459,6 +1471,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
+ 
+         // Deprecated Onyx keys
+@@ -1514,6 +1528,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNewDot',
++            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
          },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1476,6 +1489,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1493,6 +1507,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1510,6 +1525,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1527,6 +1543,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1544,6 +1561,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1561,6 +1579,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME_LENGTH: 26,
-@@ -1578,6 +1597,7 @@ const CONST = {
-             VERIFIED: 'verified',
-             SIGNER_INFO: 'signerInfo',
-             VERIFICATION: 'verification',
-+            SIGNER_INFO_PROMPT: 'signerInfoPrompt',
-         },
-         MAX_SIGNERS: 4,
-         MAX_COUNTRY_NAME
+ 
+         // Deprecated Onyx keys
+@@ -1534,6 +1549,7 @@
+             NVP_ONBOARDING: 'nvp_onboarding',
+             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
+             NVP_TRYNEWDOT: 'nvp_tryNew
