@@ -1,8 +1,9 @@
-import type {PlatformStackRouterFactory} from '@react-navigation/native';
+import type {ParamListBase, PartialState, Router, RouterConfigOptions} from '@react-navigation/native';
+import Log from '@libs/Log';
 import type {RootStackNavigatorAction} from '@libs/Navigation/AppNavigator/createRootStackNavigator/types';
-import type {PlatformStackRouterOptions} from '@libs/Navigation/PlatformStackNavigation/types';
-
-import type {PlatformStackNavigationState} from '@libs/Navigation/PlatformStackNavigation/types';
+import type {PlatformStackNavigationState, PlatformStackRouterFactory, PlatformStackRouterOptions} from '@libs/Navigation/PlatformStackNavigation/types';
+import CONST from '@src/CONST';
+import {
     applyRevealPaddingOffset,
     getFrozenHistoryStateForRemoveFullscreenUnderRHP,
     getFrozenHistoryStateForReplaceFullscreenUnderRHP,
