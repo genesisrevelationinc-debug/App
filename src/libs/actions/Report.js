@@ -1,89 +1,28 @@
-import {API} from '../API';
-import lodashGet from 'lodash/get';
-import lodashHas from 'lodash/has';
-import Onyx from 'react-native-onyx';
+import * as API from '../API';
+import * as Report from '../actions/Report';
+import * as ReportUtils from '../ReportUtils';
+import * as TransactionUtils from '../TransactionUtils';
+import * as OptionsListUtils from '../OptionsListUtils';
+import * as Localize from '../Localize';
+import * as CollectionUtils from '../CollectionUtils';
+import * as OptionsListUtils from '../OptionsListUtils';
+import * as Localize from '../Localize';
+import * as CollectionUtils from '../CollectionUtils';
+import * as IOU from '../IOU';
 
 /**
- * Fetches the report data with a check for ghost expenses
- * @param {Number} reportID
- * @returns {Promise}
- */
-export function fetchReportIfNeeded(reportID) {
-    return API.Get({
-        returnValueList: 'reportStuff',
-        reportID,
-    })
-        .then((data) => {
-            if (data.reports) {
-                // Filter out any expenses that are ghosted/missing
-                // to prevent them from causing QBO export errors
-                const reportData = data.reports[reportID];
-                if (reportData && reportData.transactionIDs) {
-                    // Check if we have ghost transactions
-                    const validTransactionIDs = reportData.transactionIDs.filter(transactionID => {
-                        const transaction = reportData.transactions[transactionID];
-                        return transaction && transaction.type === 'expense';
-                    });
-                    
-                    // Only include valid transactions (non-ghost)
-                    reportData.transactionIDs = validTransactionIDs;
-                }
-                return data;
-            }
-            return data;
-        });
-}
-
-/**
- * Sanitizes report data by removing ghost transactions that could cause export issues
+ * Remove ghost expenses that cannot be accessed from reports before QBO export
+ * to prevent ONL118 errors
  * @param {Object} report
- * @returns {Object} Cleaned report object
+ * @returns {Object}
  */
-function sanitizeReportTransactions(report) {
-    if (!report.transactions) {
-        return report;
+function preprocessReportForExport(report) {
+    // Check if report contains ghost expenses and remove them
+    if (IOU.shouldRemoveGhostExpenses(report)) {
+        return IOU.removeGhostExpenses(report);
     }
-    
-    // Create a clean copy of transactions excluding ghost entries
-    const cleanTransactions = {};
-    const cleanTransactionIDs = [];
-    
-    // Filter out any transaction that cannot be accessed or is ghosted
-    Object.keys(report.transactions).forEach((transactionID) => {
-        const transaction = report.transactions[transactionID];
-        if (transaction && transaction.amount && transaction.merchant) {
-            // Valid transaction, keep it
-            cleanTransactions[transactionID] = transaction;
-            cleanTransactionIDs.push(transactionID);
-        }
-    });
-    
-    return {
-        ...report,
-        transactionIDs: cleanTransactionIDs,
-        transactions: cleanTransactions,
-    };
+    return report;
 }
 
 /**
- * Exports report to QBO format handling ghost expense filtering
- * @param {Number} reportID
- * @returns {Promise}
- */
-export function exportReportToQBO(reportID) {
-    return fetchReportIfNeeded(reportID)
-        .then((report) => {
-            // Sanitize the report data before QBO export
-            const sanitizedReport = sanitizeReportTransactions(report);
-            
-            // Perform QBO export with clean data only
-            return API.QBOExport({
-                reportID,
-                report: sanitizedReport
-            });
-        })
-        .catch((error) => {
-            console.debug('QBO export failed:', error);
-            throw error;
-        });
-}
+ * @param {String} reportID
