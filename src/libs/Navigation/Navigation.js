@@ -7,27 +7,29 @@ function navigate(route, params) {
 }
 
 function disableSafariSwipeGestures() {
-    if (!Platform.OS === 'ios' || !window?.navigator?.userAgent?.includes('Safari')) {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
         return;
     }
     
-    // Disable Safari's back-forward swipe gestures to prevent flickering
-    // when navigating back using the browser's swipe gestures
-    const supportsPassive = !window?.addEventListener?.toString().includes('[native code]');
-    const eventOptions = supportsPassive ? {passive: false} : false;
+    // Check if we're in Safari
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (!isSafari) {
+        return;
+    }
     
-    // Prevent swipe navigation on iOS Safari
-    document.addEventListener('touchstart', (e) => {
-        // Disable swipe back/forward gestures
+    // Disable Safari's swipe navigation
+    let startX = 0;
+    let startY = 0;
+    
+    document.addEventListener('touchstart', function(e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
-    }, eventOptions);
+    });
     
-    // Also prevent swipe on the document level
-    document.addEventListener('touchmove', (e) => {
+    document.addEventListener('gesturestart', function(e) {
         e.preventDefault();
-    }, eventOptions);
+    });
 }
 
 function getComponentNameFromRouteSettings(settings) {
