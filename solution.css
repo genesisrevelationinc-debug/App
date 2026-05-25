@@ -1,4 +1,10 @@
-html, body {
+html {
+  overflow: hidden;
+  height: 100%;
+}
+body {
+  height: 100%;
+  overflow: auto;
   overscroll-behavior-x: none;
-  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
