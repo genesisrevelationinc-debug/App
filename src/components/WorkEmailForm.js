@@ -1,34 +1,54 @@
 import React from 'react';
 import {View} from 'react-native';
-import Text from '../Text';
-import Button from '../Button';
-import TextInput from '../TextInput';
-import * as ValidationUtils from '../../libs/ValidationUtils';
-import * as User from '../../services/UserService';
-import {withOnyx} from 'react-native-onyx';
-import withLocalize from '../withLocalize';
-import compose from '../libs/compose';
-import ONYX from 'react-native-onyx';
+import PropTypes from 'prop-types';
+import * as Session from '../libs/actions/Session';
+import styles from '../styles/styles';
+import withLocalize, {withLocalizePropTypes} from './withLocalize';
+import * as Session from '../libs/actions/Session';
+import * as API from '../libs/API';
+import * as ValidationUtils from '../libs/ValidationUtils';
+import * as LoginUtils from '../libs/LoginUtils';
+import Text from './Text';
+import TextPill from './TextP<|fim_suffix|>
+        );
+    }
 
-class WorkEmailForm extends React.Component {
     render() {
         return (
-            <View>
-                <Text style={{color: 'red'}}>Could not add work email</Text>
-                <TextInput 
-                    label="Work Email"
-                    placeholder="Enter your work email"
-                />
-                <Button 
-                    text="Add Work Email" 
-                    onPress={() => {
-                        // The issue is likely here - the form submission is not properly handling the verification flow
-                        // The verification screen should show after work email is added
-                    }}
-                />
+            <View style={[styles.flex1, styles.flexRow]}>
+                <TextPill>Work Email Form</TextPill>
+                <View style={styles.flex1}>
+                    <View style={[styles.ph5, styles.pv5]}>
+                        <View style={[styles.flexRow, styles.justifyContentBetween, styles.mw300, styles.mAuto]}>
+                        </View>
+                        <View style={[styles.flexRow, styles.justifyContentBetween]}>
+                            <View style={[styles.dFlex, styles.flexRow, styles.w100]}>
+                                <View style={[styles.w100]}>
+                                    <Text style={[styles.mt5, styles.textWhite]}>Enter your work email</Text>
+                                    <Text style={[styles.mt2, styles.textWhite]}>Please enter the code</Text>
+                                </View>
+                                <View style={[styles.w100, styles.mt2]}>
+                                    <TextInput
+                                        style={[styles.w100, styles.pv2]}
+                                        placeholder="name@company.com"
+                                        onChangeText={this.setWorkEmail}
+                                        value={this.state.workEmail}
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </View>
             </View>
         );
     }
 }
 
-export default WorkEmailForm;
+WorkEmailForm.propTypes = {
+    ...withLocalizePropTypes,
+    ...sessionPropTypes,
+};
+
+export {
+    WorkEmailForm,
+};
