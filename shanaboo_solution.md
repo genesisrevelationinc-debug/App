@@ -28,96 +28,76 @@ The payment options are likely controlled by a selector or utility function that
 Given the regression from PR #86619, I need to find what changed. The issue is that "Mark as paid" and "Pay with wallet" are missing when sending money from global create.
 
 Let me think about what could cause this. The key difference between sending from within a chat vs from global create is:
-- From within a chat: there's an existing `report` (the chat report)
-- From global create: no existing report, it needs to be created
+- From within a chat: you already have a report/recipient context
+- From global create: you select the recipient during the flow
 
-The payment button logic likely checks if the user can pay, and this check might fail when there's no existing report.
+The payment buttons likely depend on some condition that checks if the transaction is a "send" (not request) and if the user has a wallet. The bug might be that this condition incorrectly requires a report to be present, or doesn't properly handle the global create flow.
 
-Looking at the code structure, I need to find where the payment button visibility is determined. This is likely in a selector or in the confirmation page component itself.
+Let me look for the most likely files. Based on the repo name "Expensify/App" and the issue description mentioning "Send Money" and confirmation page, I'll search for:
 
-Based on common patterns in this codebase, let me look for:
-1. `canIOUBePaid` or similar functions
-2. `getIOUOptions` or similar
-3. The confirmation page component
+1. `src/pages/iou/request/step/IOURequestStepConfirmation.tsx` - New architecture
+2. Or similar confirmation components
 
-Let me search more specifically. The issue mentions this is for "Send Money" flow specifically. In Expensify, "Send Money" is different from "Request Money" - when you send money, you should be able to mark it as paid immediately.
+Actually, looking more carefully at the structure, this might be in the `Mobile-Expensify` submodule or in `src/`. Let me check what's in `src/`.
 
-The bug is likely that the code is treating "Send Money" from global create the same as "Request Money", not showing the pay options.
+Given the file listing shows `src/` directory, let me infer the structure. In Expensify App, the IOU flow is typically in `src/pages/iou/`.
 
-I'll look at files related to IOU confirmation and payment options. Based on the file listing, I need to infer the structure.
+The most likely cause is in the confirmation page where payment buttons are rendered. The condition to show "Mark as paid" or "Pay with wallet" might be checking for the wrong thing.
 
-Common file paths in this repo:
-- `src/pages/iou/request/step/IOURequestStepConfirmation.tsx`
-- `src/components/MoneyRequestConfirmationList.tsx`
-- `src/libs/IOUUtils.ts` or similar
-- `src/libs/actions/IOU.ts`
+Let me think about what PR #86619 might have changed. It could have introduced a condition that hides these buttons when there's no report, or it could have changed how the `iou` type is determined.
 
-Let me think about what the actual bug might be. When you "Send Money" from global create:
-1. You select a recipient
-2. You enter amount
-3. On confirmation page, you should see "Mark as paid" or "Pay with wallet"
+Actually, I realize I need to be more careful. Let me look at what files are most likely involved. The issue says "Missing the Mark as paid or Pay with Wallet option on the confirm page". 
 
-The fact that these are missing suggests the code thinks this is a "Request" not a "Send", or there's a condition that hides these buttons.
+In the Expensify codebase, the confirmation page for money requests typically uses a component like `MoneyRequestConfirmationList` or similar. The buttons are likely rendered based on whether the request is a "send" (iouType = 'send') and other conditions.
 
-Looking at PR #86619 being the source, I need to infer what might have changed.
+Let me search for where these buttons are conditionally rendered. Common patterns:
+- `isSendingMoney` or similar flag
+- `iouType === CONST.IOU.TYPE.SEND`
+- Check for `hasWallet`
 
-Actually, let me re-read the issue more carefully. The title says "IOU - Missing Mark as Paid or Pay with Wallet option when sending Money request". 
+The bug might be that when starting from global create, the `iouType` is not properly set to 'send', or some other condition fails.
 
-Wait - "sending Money request" - this might actually mean "Send Money" (not request). In Expensify terminology:
-- "Request money" = you ask someone to pay you
-- "Send money" = you pay someone
+Given I need to produce a diff without seeing the actual files, let me think about what the most likely fix is. 
 
-When you "Send money", the confirmation page should show options to pay (Mark as paid / Pay with wallet).
+Looking at the issue more carefully: "Start a send money flow and select Test User B as the recipient" - this is specifically about SEND money, not request money. The "Mark as paid" and "Pay with wallet" should appear for send flows.
 
-The bug is these options are missing when initiated from global create.
+The most likely issue is in the confirmation page component where it determines whether to show the payment buttons. This might be checking `iouType` or checking if it's in a certain flow.
 
-Let me look for where this logic lives. I'll search for relevant components.
+Let me look for files that might contain this logic. I'll search for patterns like "Mark as paid", "Pay with wallet", or the component that renders these buttons.
 
-Given the file structure, let me look at:
+Based on my knowledge of the Expensify codebase, I'll look in these areas:
+- `src/components/MoneyRequestConfirmationList.tsx` or similar
 - `src/pages/iou/` directory
-- Components like `MoneyRequestConfirmationList`
 
-Actually, I realize I need to work with what I have. Let me think about this more carefully.
+Let me try to find the actual file. I'll use common file patterns.
 
-The most likely scenario: There's a condition that checks `isFromGlobalCreate` or similar, and when true, it doesn't show the payment options. Or, the payment options depend on having a reportID, and from global create, the reportID isn't set yet.
+Actually, let me reconsider. The issue mentions this is reproducible and is a bug in production. The regression is from PR #86619. I need to find what that PR changed.
 
-Let me look for the actual code. Since I can't browse files, I'll need to infer from common patterns.
+Since I can't access the PR directly, I'll infer from the issue. The problem is:
+- When sending money from global + button, the confirmation page doesn't show "Mark as paid" or "Pay with wallet"
+- This works when sending from within a chat (implied, since the bug is specifically about global create)
 
-In Expensify App, the money request flow uses a form with steps. The confirmation step is typically where you see the final details and action buttons.
+The difference is:
+- From within a chat: the report is known when starting the flow
+- From global create: the report is created/selected during the flow
 
-For "Send money", the action button should be "Pay" not "Request". The logic to determine this is likely based on the `iouType` or similar.
+So the bug is likely that the code checks for an existing report to determine if payment buttons should show, but when from global create, the report hasn't been created yet.
 
-Let me think about what PR #86619 might have changed. It could have:
-1. Added a condition that incorrectly hides pay buttons
-2. Changed how the report is determined
-3. Changed the flow for global create
+Let me look for where this check happens. I'll search for conditions involving `report` or `chatReport` and payment buttons.
 
-Given this is a regression, the fix is likely to restore previous behavior or add a missing condition.
+Actually, I think I need to look at this differently. Let me search for the actual component files.
 
-Let me search for files that might contain this logic. I'll look at:
+Given the constraints, let me try to find files by searching for likely names. Let me check if there's a pattern I can search for.
 
-1. `src/pages/iou/request/step/IOURequestStepConfirmation.tsx` - The confirmation step
-2. `src/components/MoneyRequestConfirmationList.tsx` - The list showing confirmation details
-3. `src/libs/IOUUtils.ts` - Utility functions for IOU
+I'll look for: `IOURequestStepConfirmation`, `MoneyRequestConfirmPage`, `SendMoneyConfirmPage`, or similar.
 
-Actually, I should look more carefully at the structure. Let me check if there's a `send` flow separate from `request`.
+Let me also consider that in newer Expensify code, the flow might use a hook or utility to determine available payment options.
 
-In newer versions of Expensify App, the structure might be:
-- `src/pages/iou/request/` - for request money
-- `src/pages/iou/send/` - for send money
+Looking at the issue again: "On the confirmation page, tap Mark as paid or Pay with wallet" - these are buttons that should appear at the bottom of the confirmation page.
 
-Or it could all be in one place with a type parameter.
+In the Expensify App, the confirmation list typically has a prop or computed value for `shouldShowPayButton` or similar.
 
-Let me think about this differently. The issue says "Send Money - From Global Create". This suggests there's a specific flow for sending money.
-
-Looking at the expected behavior: "On the confirmation page, tap Mark as paid or Pay with wallet"
-
-This means the confirmation page should have these buttons. The bug is they don't appear.
-
-Common causes:
-1. A condition `shouldShowPayButton` is false
-2. The button rendering is conditional on some state that's not set
-
-For "Send money" from global create, the key issue might be that there's no `transaction` report yet, or the `chatReportID` is not properly set.
-
-Let me look for where this is determined. I'll search for files containing "Mark as paid" or
+Let me think about what could cause this to be false when it shouldn't be. Common conditions:
+- `isPolicyExpenseChat` - should be false for P2P
+- `isFromGlobalCreate` - might be incorrectly used
+- `iouType === CONST.IOU.TYPE.SEND
