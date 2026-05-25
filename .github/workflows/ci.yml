@@ -1,0 +1,32 @@
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Ensure workflow runs regardless of approver status
+    # Fix: Remove dependency on specific approver presence
+    if: github.event_name != 'pull_request' || github.event.pull_request.approved == true || contains(github.event.pull_request.labels.*.name, 'approved')
+    steps:
+      - uses: actions/checkout@v4
+      
+          node-version-file: '.nvmrc'
+      
+      - name: Install dependencies
+        # Fix: Use npm install with proper cache handling when lockfile changes
+        run: npm ci --prefer-offline
+      
+      - name: Run tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  # Add workflow to handle approver removal gracefully
+  handle-approval-change:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'pull_request' && github.event.changes.requested_reviewers
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Re-evaluate workflows on approver change
+        run: |
+          echo "Re-evaluating workflow status after approver removal"
+          # Trigger re-check of required workflows
+          gh api repos/${{ github.repository }}/actions/runs -X POST -f event_type=workflow_recheck
