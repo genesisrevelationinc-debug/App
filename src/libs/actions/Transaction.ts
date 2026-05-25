@@ -1,7 +1,7 @@
 import Onyx from 'react-native-onyx';
 import type {OnyxUpdate} from 'react-native-onyx';
 import * as API from '@libs/API';
-import * as ExpenseRule from '@libs/ExpenseRule';
+import * as ExpenseRules from '@libs/ExpenseRules';
 import type {ApplyWorkspaceExpenseRulesParams} from '@libs/API/parameters';
 import {READ_COMMANDS, WRITE_COMMANDS} from '@libs/API/types';
 import * as CollectionUtils from '@libs/CollectionUtils';
@@ -125,7 +125,7 @@ type SaveWaypointProps = {
     });
 
     // Apply workspace expense rules to the newly scraped transaction
-    ExpenseRule.applyAllExpenseRules(transactionID);
+    ExpenseRules.applyAllExpenseRules(transactionID);
 
     return transactionID;
 }
@@ -173,7 +173,7 @@ type SaveWaypointProps = {
     });
 
     // Apply workspace expense rules to the updated scraped transaction
-    ExpenseRule.applyAllExpenseRules(transactionID);
+    ExpenseRules.applyAllExpenseRules(transactionID);
 }
 
 /**
