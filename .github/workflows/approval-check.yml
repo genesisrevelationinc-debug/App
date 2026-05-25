@@ -1,0 +1,46 @@
+name: Approval State Preservation
+
+on:
+  pull_request:
+    types: [review_request_removed, review_request_edited, synchronize]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+jobs:
+  preserve-workflow-state:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check approval status
+        id: check-approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const approvedReviews = reviews.filter(review => review.state === 'APPROVED');
+            const hasApproval = approvedReviews.length > 0;
+            
+            // Preserve workflow state even when original approver is removed
+            core.setOutput('has_approval', hasApproval);
+            core.setOutput('approval_count', approvedReviews.length);
+            
+            return { has_approval: hasApproval, count: approvedReviews.length };
+      
+      - name: Update workflow status
+        if: steps.check-approval.outputs.has_approval == 'true'
+        run: |
+          echo "Workflow approval preserved with ${{ steps.check-approval.outputs.approval_count }} approvals"
+          # Ensure all required workflows remain active
+          echo "PRESERVED_STATE=true" >> $GITHUB_ENV
+      
+      - name: Continue workflow execution
+        if: env.PRESERVED_STATE == 'true'
+        run: |
+          echo "Continuing with preserved workflow state"
+          # Add any additional steps that need to run when approval is preserved
