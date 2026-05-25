@@ -1,127 +1,175 @@
 ```diff
 --- a/src/CONST.ts
 +++ b/src/CONST.ts
-@@ -1234,6 +1234,7 @@
-         VERIFIED: 'verified',
-         RERUN_ONBOARDING: 'rerunOnboarding',
-         ACTION_REQUIRED: 'actionRequired',
-+        GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'globalReimbursementBankAccountSigner',
-     },
- 
-     ONYXKEYS: {
-@@ -1256,6 +1257,7 @@
-         NVP_ONBOARDING: 'nvp_onboarding',
-         NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-         NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+        NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
- 
-         // This is an object with UTM params that we use to handle certain navigation logic (like redirects to OldDot)
-         NVP_INTRO_SELECTED: {
-@@ -1274,6 +1276,7 @@
-             INTRO_SELECTED: 'private_introSelected',
-             ONBOARDING: 'private_onboarding',
-             TRYNEWDOT: 'private_tryNewDot',
-+            GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'private_globalReimbursementBankAccountSigner',
+@@ -1234,6 +1234,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // This is an object with UTM params that we use to handle certain navigation logic (like redirects to OldDot)
-@@ -1294,6 +1297,7 @@
-             NVP_ONBOARDING: 'private_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'private_onboarding_purpose',
-             NVP_TRYNEWDOT: 'private_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'private_globalReimbursementBankAccountSigner',
+         VERIFICATIONS: {
+             APPROVE: 'approve',
+@@ -1256,6 +1257,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1314,6 +1318,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1282,6 +1284,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1334,6 +1339,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1308,6 +1311,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1354,6 +1360,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1334,6 +1338,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1374,6 +1381,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1360,6 +1365,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1394,6 +1402,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1386,6 +1392,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1414,6 +1423,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1412,6 +1419,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1434,6 +1444,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1438,6 +1446,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1454,6 +1465,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1464,6 +1473,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1474,6 +1486,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1490,6 +1500,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1494,6 +1507,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1516,6 +1527,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1514,6 +1528,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNewDot',
-+            NVP_GLOBAL_REIMBURSEMENT_BANK_ACCOUNT_SIGNER: 'nvp_globalReimbursementBankAccountSigner',
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1542,6 +1554,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
          },
- 
-         // Deprecated Onyx keys
-@@ -1534,6 +1549,7 @@
-             NVP_ONBOARDING: 'nvp_onboarding',
-             NVP_ONBOARDING_PURPOSE: 'nvp_onboarding_purpose',
-             NVP_TRYNEWDOT: 'nvp_tryNew
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1568,6 +1581,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1594,6 +1608,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1620,6 +1635,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+        MAX_NAME_LENGTH: 100,
+@@ -1646,6 +1662,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1672,6 +1689,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1698,6 +1716,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1724,6 +1743,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1750,6 +1770,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED: 'closed',
++            PENDING_SIGNER_INFO: 'pendingSignerInfo',
+         },
+         MAX_LENGTH: 24,
+         MAX_NAME_LENGTH: 100,
+@@ -1776,6 +1797,7 @@ const CONST = {
+             VERIFIED: 'verified',
+             REJECTED: 'rejected',
+             CLOSED
