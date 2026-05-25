@@ -1,22 +1,20 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {View, TouchableOpacity} from 'react-native';
+import {useSharedValue, useAnimatedStyle, interpolate, runOnUI} from 'react-native-reanimated';
+import {PanGesture, TapGesture} from 'react-native-gesture-handler';
 import styles from './LeftHandNavigation.module.css';
-import {useSharedValue, useAnimatedStyle} from 'react-native-reanimated';
 
 type LeftHandNavigationProps = {
     isCollapsed: boolean;
-    setIsCollapsed: (isCollapsed: boolean) => void;
+    onCollapseToggle: (collapsed: boolean) => void;
 };
 
-function LeftHandNavigation() {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [isTempExpanded, setIsTempExpanded] = useState(false);
-    
+const LeftHandNavigation: React.FC<LeftHandNavigationProps> = ({isCollapsed, onCollapseToggle}) => {
     return (
         <View style={isCollapsed ? styles.sidebarCollapsed : styles.sidebarExpanded}>
-            {/* Implementation will go here */}
+            {/* Collapsible sidebar implementation */}
         </View>
     );
-}
+};
 
 export default LeftHandNavigation;
