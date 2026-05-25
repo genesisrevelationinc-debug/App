@@ -1,3 +1,1 @@
-if (!isOffline) {
-  // add submit action
-}
+const shouldShowSubmit = !isOffline && canSubmit;
