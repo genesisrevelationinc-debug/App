@@ -1,7 +1,7 @@
 import {useIsFocused} from '@react-navigation/native';
 import React from 'react';
-import {View, StyleSheet} from 'react-native';
-import type {StyleProp, ViewStyle} from 'react-native';
+import {View} from 'react-native';
+import type {StyleProp, TextStyle, ViewStyle} from 'react-native';
 import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import Text from '@components/Text';
 import {useCurrencyListActions} from '@hooks/useCurrencyList';
@@ -9,7 +9,6 @@ import useLocalize from '@hooks/useLocalize';
 import useResponsiveLayoutOnWideRHP from '@hooks/useResponsiveLayoutOnWideRHP';
 import useThemeStyles from '@hooks/useThemeStyles';
 import type * as OnyxTypes from '@src/types/onyx';
-import variables from '@src/styles/variables';
 
 type MoneyRequestReportTotalSpendProps = {
     /** Report for which the total spend is being displayed */
@@ -28,14 +27,14 @@ type MoneyRequestReportTotalSpendProps = {
     totalDisplaySpend: number;
 
     /** Whether the report has any pending actions */
+    /** Whether the report has any pending actions */
     hasPendingAction: boolean;
 
     /** Style for the text container of the total spend */
-    textContainerStyle?: StyleProp<ViewStyle>;
+    textContainerStyle?: StyleProp<TextStyle>;
 };
 
 function MoneyRequestReportTotalSpend({
-    hasComments = false,
     isLoadingReportActions = false,
     isEmptyTransactions,
     totalDisplaySpend,
@@ -50,21 +49,21 @@ function MoneyRequestReportTotalSpend({
     const isFocused = useIsFocused();
     const shouldShowComments = hasComments || isLoadingReportActions;
 
-    const commentContainerStyle = [styles.ph5, styles.justifyContentBetween, styles.mb2];
-
-    return (
-    const isFocused = useIsFocused();
-    const shouldShowComments = hasComments || isLoadingReportActions;
-
-    const commentContainerStyle = [styles.ph5, styles.justifyContentBetween, styles.mb2, localStyles.container];
-
     return (
         <View style={[styles.dFlex, styles.flexRow, styles.justifyContentEnd, shouldShowComments && commentContainerStyle]}>
+            <Animated.Text
+                style={[styles.textLabelSupporting, textContainerStyle]}
+                entering={hasComments ? undefined : FadeIn}
+                exiting={isFocused ? FadeOut : undefined}
+            >
+                exiting={isFocused ? FadeOut : undefined}
             </Animated.Text>
             {!isEmptyTransactions && (
                 <View style={[styles.dFlex, styles.flexRow, styles.alignItemsCenter, styles.pr3, textContainerStyle, shouldUseNarrowLayout && [styles.justifyContentBetween, styles.w100]]}>
-                    <Text style={[styles.mr3, styles.textLabelSupporting]}>{translate('common.total')}</Text>
+                    <Text style={[styles.mr3, styles.textLabelSupporting, textContainerStyle]}>{translate('common.total')}</Text>
                     <Text style={[shouldUseNarrowLayout ? styles.mnw64p : styles.mnw100p, styles.textAlignRight, styles.textBold, hasPendingAction && styles.opacitySemiTransparent]}>
+                        {convertToDisplayString(totalDisplaySpend, report?.currency)}
+                    </Text>
                         {convertToDisplayString(totalDisplaySpend, report?.currency)}
                     </Text>
                 </View>
@@ -72,17 +71,5 @@ function MoneyRequestReportTotalSpend({
         </View>
     );
 }
-
-export default MoneyRequestReportTotalSpend;
-    );
-}
-
-const localStyles = StyleSheet.create({
-    container: {
-        minWidth: variables.sideBarWidth,
-        maxWidth: variables.sideBarWidth,
-        width: variables.sideBarWidth,
-    },
-});
 
 export default MoneyRequestReportTotalSpend;
