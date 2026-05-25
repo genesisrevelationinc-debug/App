@@ -1,28 +1,89 @@
-import Onyx from 'react-native-onyx';
+import {API} from '../API';
 import lodashGet from 'lodash/get';
 import lodashHas from 'lodash/has';
-import ONYXKEYS from '../../ONYX42';
-import * as CollectionUtils from '../utils/CollectionUtils';
+import Onyx from 'react-native-onyx';
 
-const checkAndCleanOrphanedExpenses = (reportID) => {
-    const report = Onyx.get(`report_${reportID}`);
-    if (!report) return;
+/**
+ * Fetches the report data with a check for ghost expenses
+ * @param {Number} reportID
+ * @returns {Promise}
+ */
+export function fetchReportIfNeeded(reportID) {
+    return API.Get({
+        returnValueList: 'reportStuff',
+        reportID,
+    })
+        .then((data) => {
+            if (data.reports) {
+                // Filter out any expenses that are ghosted/missing
+                // to prevent them from causing QBO export errors
+                const reportData = data.reports[reportID];
+                if (reportData && reportData.transactionIDs) {
+                    // Check if we have ghost transactions
+                    const validTransactionIDs = reportData.transactionIDs.filter(transactionID => {
+                        const transaction = reportData.transactions[transactionID];
+                        return transaction && transaction.type === 'expense';
+                    });
+                    
+                    // Only include valid transactions (non-ghost)
+                    reportData.transactionIDs = validTransactionIDs;
+                }
+                return data;
+            }
+            return data;
+        });
+}
+
+/**
+ * Sanitizes report data by removing ghost transactions that could cause export issues
+ * @param {Object} report
+ * @returns {Object} Cleaned report object
+ */
+function sanitizeReportTransactions(report) {
+    if (!report.transactions) {
+        return report;
+    }
     
-    const expenses = lodashGet(report, 'expenses', {});
-    const cleanedExpenses = {};
+    // Create a clean copy of transactions excluding ghost entries
+    const cleanTransactions = {};
+    const cleanTransactionIDs = [];
     
-    Object.keys(expenses).forEach((expenseID) => {
-        const expense = expenses[expenseID];
-        // Check if expense is orphaned/ghost - exists in report but not accessible
-        if (expense && lodashHas(expense, 'isOrphaned') && expense.isOrphaned) {
-            // Skip orphaned expenses that cannot be opened or modified
-            return;
+    // Filter out any transaction that cannot be accessed or is ghosted
+    Object.keys(report.transactions).forEach((transactionID) => {
+        const transaction = report.transactions[transactionID];
+        if (transaction && transaction.amount && transaction.merchant) {
+            // Valid transaction, keep it
+            cleanTransactions[transactionID] = transaction;
+            cleanTransactionIDs.push(transactionID);
         }
-        cleanedExpenses[expenseID] = expense;
     });
     
-    // Update report with cleaned expenses
-    Onyx.merge(`report_${reportID}`, {expenses: cleanedExpenses});
-};
+    return {
+        ...report,
+        transactionIDs: cleanTransactionIDs,
+        transactions: cleanTransactions,
+    };
+}
 
-export {checkAndCleanOrphanedExpenses};
+/**
+ * Exports report to QBO format handling ghost expense filtering
+ * @param {Number} reportID
+ * @returns {Promise}
+ */
+export function exportReportToQBO(reportID) {
+    return fetchReportIfNeeded(reportID)
+        .then((report) => {
+            // Sanitize the report data before QBO export
+            const sanitizedReport = sanitizeReportTransactions(report);
+            
+            // Perform QBO export with clean data only
+            return API.QBOExport({
+                reportID,
+                report: sanitizedReport
+            });
+        })
+        .catch((error) => {
+            console.debug('QBO export failed:', error);
+            throw error;
+        });
+}
