@@ -1,4 +1,38 @@
-<div align="center">
+div
+    <a href="https://new.expensify.com">
+        <img src="https://raw.githubusercontent.com/Expensify/App/main/web/favicon.png" width="64" height="64" alt="New Expensify Icon">
+    </a>
+    <h1>
+        <a href="https://new.expensify.com">
+            New Expensify
+        </a>
+    </h1>
+</div>
+
+<div>
+    <h1>
+        <a href="https://new.expensify.com">
+            New Expensify
+        </a>
+    </h1>
+</div>
+
+#### Table of Contents
+* [Local Development](#local-development)
+* [Platform-Specific Setup](#platform-specific-setup)
+* [Testing on browsers in simulators and emulators](#testing-on-browsers-in-simulators-and-emulators)
+* [Running The Tests](#running-the-tests)
+
+#### Additional Reading
+* [Application Philosophy](contributingGuides/philosophies/INDEX.md)
+* [API Details](contributingGuides/API.md)
+* [Contributing to Expensify](contributingGuides/CONTRIBUTING.md)
+* [Expensify Code of Conduct](CODE_OF_CONDUCT.md)
+* [Contributor License Agreement](CLA.md)
+* [React StrictMode](contributingGuides/STRICT_MODE.md)
+* [Left Hand Navigation(LHN)](contributingGuides/LEFT_HAND_NAVIGATION.md)
+* [HybridApp - additional info & troubleshooting](contributingGuides/HYBRID_APP.md)
+
     <a href="https://new.expensify.com">
         <img src="https://raw.githubusercontent.com/Expensify/App/main/web/favicon.png" width="64" height="64" alt="New Expensify Icon">
     </a>
@@ -48,13 +82,15 @@ For detailed setup instructions for each platform, see the following guides:
 * **📱 iOS Development**: [iOS Setup Instructions](contributingGuides/SETUP_IOS.md)  
 * **🤖 Android Development**: [Android Setup Instructions](contributingGuides/SETUP_ANDROID.md)
 
+**Optional AI-assisted mobile testing:** If you use Claude Code, the [`/agent-device` skill](.claude/skills/agent-device/SKILL.md) drives iOS and Android simulators or devices for interactive testing, debugging, and performance profiling. Requires `npm install -g agent-device`.
+
 ## General Troubleshooting
 1. If you are having issues with **_Getting Started_**, please reference [React Native's Documentation](https://reactnative.dev/docs/environment-setup)
 2. If you are running into CORS errors like (in the browser dev console)
    ```sh
    Access to fetch at 'https://www.expensify.com/api/BeginSignIn' from origin 'http://localhost:8080' has been blocked by CORS policy
    ```
-   You probably have a misconfigured `.env` file - remove it (`rm .env`) and try again
+   You probably have a misconfigured `.env` file - remove it (`rm .env`) and try again.
 
 **Note:** Expensify engineers that will be testing with the API in your local dev environment please refer to [these additional instructions](https://stackoverflow.com/c/expensify/questions/7699/7700).
 
