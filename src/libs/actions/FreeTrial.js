@@ -1,0 +1,1 @@
+// The file FreeTrial.js doesn't exist in the provided file listing, so we need to identify where the duplicate email sending logic might be
