@@ -12,36 +12,56 @@ import * as CardUtils from '@libs/CardUtils';
 import * as CurrencyUtils from '@libs/CurrencyUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import * as PersonalDetailsUtils from '@libs/PersonalDetailsUtils';
-import * as UserUtils from '@libs/UserUtils';
-import Wallet from '@libs/actions/Wallet';
-import type {TranslationPaths} from '@src/languages/types';
+import type {WalletPageOnyxProps, WalletPageProps} from '@pages/settings/Wallet/WalletPage/types';
+import * as PaymentMethods from '@userActions/PaymentMethods';
+import {openPersonalBankAccountSetupView, openWorkspaceMembersPage} from '@userActions/Report';
+import * as PaymentMethods from '@userActions/PaymentMethods';
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
-import type {Route} from '@src/ROUTES';
-    const [shouldShowLoadingSpinner, setShouldShowLoadingSpinner] = useState(false);
-    const [paymentMethodPressed, setPaymentMethodPressed] = useState<PaymentMethod | undefined>();
-    const [contentRef, setContentRef] = useState<View | null>(null);
-    const [policies] = useOnyx(ONYXKEYS.COLLECTION.POLICY, {
-        selector: PolicyUtils.getActivePolicies,
-    });
+import type {BankAccountList, CardList, Card as CardType, UserWallet} from '@src/types/onyx';
+import type {PaymentMethod} from '@src/types/onyx/PaymentMethods';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import type {Policy} from '@src/types/onyx';
+import AddBankAccount from './AddBankAccount';
+import AddPaymentMethodMenu from './AddPaymentMethodMenu';
+import BaseWalletPage from './BaseWalletPage';
+    const [shouldShowEmptyListError, setShouldShowEmptyListError] = useState(false);
+    const [isUserWalletEmpty, setIsUserWalletEmpty] = useState(false);
+    const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+    const [policies] = useOnyx(ONYXKEYS.COLLECTION.POLICY);
+    const [allPolicyMembers] = useOnyx(ONYXKEYS.COLLECTION.POLICY_MEMBERS);
+    const [allPersonalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS);
 
-    const isActingAsDelegate = !!account?.delegatedAccess?.delegate;
+    const [isWalletEnabled, setIsWalletEnabled] = useState(false);
 
-        [translate, theme, isOffline, isActingAsDelegate, paymentMethodPressed, account?.delegatedAccess?.delegate],
-    );
+        return paymentMethod;
+    }, [bankAccountList, cardList, fundList, isLoadingCurrency, isUserWalletEmpty, translate, theme, isOffline]);
 
     const hasWorkspaceMembers = useMemo(() => {
-        const activePolicies = Object.values(policies ?? {}).filter(Boolean);
-        return activePolicies.some((policy) => policy.employeeList && Object.keys(policy.employeeList).length > 1);
-    }, [policies]);
+        if (!policies) {
+            return false;
+        }
+        const activePolicies = Object.values(policies).filter((policy): policy is Policy => !!policy && !policy.pendingAction);
+        if (activePolicies.length === 0) {
+            return false;
+        }
+        return activePolicies.some((policy) => {
+            const policyMembers = allPolicyMembers?.[`${ONYXKEYS.COLLECTION.POLICY_MEMBERS}${policy.id}`];
+            if (!policyMembers) {
+                return false;
+            }
+            const memberCount = Object.keys(policyMembers).filter((key) => key !== 'errors' && key !== 'pendingAction').length;
+            return memberCount > 1;
+        });
+    }, [policies, allPolicyMembers]);
 
-    const makeDefaultPaymentMethod = useCallback(
-        (defaultBankAccountID: number, defaultFundID: number) => {
-            if (defaultBankAccountID) {
-                                                    shouldShowMakeDefaultButton={!isDefault && !isEmptyObject(bankAccountList) && Object.keys(bankAccountList).length > 1}
-                                                    shouldShowDeleteButton={!isEmptyObject(bankAccountList) && Object.keys(bankAccountList).length > 1}
-                                                    shouldShowDefaultLabel={isDefault}
+    const filteredPaymentMethods = useMemo(() => {
+        if (shouldShowEmptyListError) {
+            return [];
+                                                    shouldShowMenuIcon
+                                                    popoverMenuRef={paymentMethodItemRef}
+                                                    onPress={(item) => onPressPaymentMethod(item)}
                                                     shouldShowShareButton={isBusinessAccount && hasWorkspaceMembers}
-                                                    iconFill={theme.icon}
-                                                    onPress={() => {
-                                                        if (isEmptyObject(bankAccountList)) {
+                                                    shouldShowMakeDefaultButton={!isBusinessAccount}
+                                                    style={[styles.mb4]}
+                                                />
