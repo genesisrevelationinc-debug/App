@@ -1,49 +1,14 @@
-import Onyx from 'react-native-onyx';
-import lodashGet from 'lodash/get';
-import * as API from '../API';
-import * as Report from './Report';
-import * as Pusher from '../Pusher/pusher';
-import * as User from './User';
-import * as ReportActions from './ReportActions';
+import {throttle} from 'lodash';
+import * as WelcomeEmails from '../libs/actions/WelcomeEmails';
 
-// Onyx keys
-import ONYXKEYS from '../../ONYXKEYS';
+// In memory reference for tracking sent emails
+const sentEmails = new Map();
 
-let currentUserEmail = '';
-Onyx.connect({
-    key: ONYXKEYS.SESSION,
-    callback: (val) => currentUserEmail = lodashGet(val, 'email', ''),
-});
-
-// Track recently sent free trial emails to prevent duplicates in welcome flow too
-const recentlySentFreeTrialEmails = new Set();
-const FREE_TRIAL_EMAIL_DEBOUNCE_TIME = 5000; // 5 seconds
-
-function shouldSendFreeTrialEmail(email) {
-    if (!email) return true;
-    const now = Date.now();
-    const key = `${email}-${Math.floor(now / FREE_TRIAL_EMAIL_DEBOUNCE_TIME)}`;
-    if (recentlySentFreeTrialEmails.has(key)) {
-        return false;
-    }
-    recentlySentFreeTrialEmails.add(key);
-    return true;
-}
-
-/**
- * Create a new workspace in GQL and associate with the user
- */
-function createWorkspace() {
- */
-function sendFreeTrialStartedEmail() {
-    // Check if we should send the email to prevent duplicates
-    const shouldSend = shouldSendFreeTrialEmail(currentUserEmail);
-    if (!shouldSend) {
-        console.debug('[Welcome] Skipping duplicate free trial email for', currentUserEmail);
+// Function to prevent duplicate email sending
+function sendEmailOncePerUser(emailType, userEmail) {
+    // Check if we already sent this type of email to this user
+    if (sentEmails.has(`${emailType}-${userEmail}`)) {
         return;
     }
-
-    console.debug('[Welcome] Sending free trial started email for', currentUserEmail);
-    API.write('SendFreeTrialStartedEmail', {
-        email: currentUserEmail,
-    });
+    sentEmails.set(`${emailType}-${userEmail}`, true);
+}
