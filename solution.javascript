@@ -1,4 +1,4 @@
-// Bug:
-const displayAmount = transaction.modifiedAmount || transaction.originalAmount;
+// Fix:
+const displayAmount = transaction.modifiedAmount ?? transaction.originalAmount;
 // or
-const displayAmount = modifiedAmount || amount;
+const displayAmount = transaction.modifiedAmount !== undefined ? transaction.modifiedAmount : transaction.originalAmount;
