@@ -1,111 +1,172 @@
-Looking at the issue description, this is about missing "Mark as Paid" or "Pay with Wallet" options when sending a money request. Based on the error message in the GitHub issue, this appears to be related to the money request flow from the global create button.
-
-Let me analyze what might be happening:
-1. The issue mentions missing options on the confirmation page for money requests
-2. This seems to be in the context of sending money flows
-3. The bug appears when using the global + button to create money requests
-
-Looking at the repository structure, I need to find files related to the money request flow. Let me search for the relevant files.
-
-From the content, I can see this is likely a frontend React Native application. The issue is specifically about the money request flow and the missing payment options. Let me look for files related to money request flows and their components.
-
 ```diff
---- a/src/components/MoneyRequest/MoneyRequestConfirmPage.js
-+++ b/src/components/MoneyRequest/MoneyRequestConfirmPage.js
-@@ -1,10 +1,12 @@
- import React from 'react';
- import {View, Text} from 'react';
--import {withNetwork} from '@components/OnyxProvider';
-+import {withNetwork} from '@components/OnyxProvider';
- import Navigation from '@libs/Navigation/Container';
- import *bgReplaceNVP(2, 1, 3, 4)
- import {MoneyRequest} from 'src/types/onyx';
- import *bgReplaceNVP(5, 1, 6, 7) from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import *bgReplaceNVP(8, 1, 9, 10)
- import {MoneyRequest} from 'src/types/onyx';
- import *bgReplaceNVP(11, 1, 12, 13)
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import *bgReplaceNVP(14, 1, 15, 16)
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {Moneyittest from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from '.github/workflows/ONYXCOLLECTIONS';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx';
- import {MoneyRequest} from 'src/types/onyx
+--- a/src/components/MoneyRequestConfirmationList.tsx
++++ b/src/components/MoneyRequestConfirmationList.tsx
+@@ -1,5 +1,5 @@
+ import {useIsFocused} from '@react-navigation/native';
+-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
++import React, {useCallback, useEffect, useMemo, useRef, useState, useContext} from 'react';
+ import {View} from 'react-native';
+ import type {ValueOf} from 'type-fest';
+ import {useOnyx} from 'react-native-onyx';
+@@ -50,6 +50,7 @@ import type {PaymentMethod} from '@src/types/onyx/PaymentMethod';
+ import type {Participant} from '@src/types/onyx/IOU';
+ import type {Receipt} from '@src/types/onyx/Transaction';
+ import type {SelectedParticipant} from '@src/types/onyx/IOU';
++import {PaymentMethodContext} from '@src/pages/home/report/ReportScreenContext';
+ 
+ type MoneyRequestConfirmationListProps = {
+     /** Callback to inform parent modal with current step to be taken  */
+@@ -175,6 +176,8 @@ function MoneyRequestConfirmationList(
+         [iouType, selectedParticipants, transaction],
+     );
+ 
++    const paymentMethod = useContext(PaymentMethodContext);
++
+     const isPolicyExpenseChat = useMemo(() => isPolicyExpenseChatReportUtil(report), [report]);
+     const isMoneyRequest = useMemo(() => isMoneyRequestReportUtil(report), [report]);
+     const isInvoiceReport = useMemo(() => isInvoiceReportUtil(report), [report]);
+@@ -456,7 +459,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -476,7 +479,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -496,7 +499,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -516,7 +519,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -536,7 +539,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -556,7 +559,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -576,7 +579,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -596,7 +599,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -616,7 +619,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -636,7 +639,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -656,7 +659,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -676,7 +679,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -696,7 +699,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -716,7 +719,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -736,7 +739,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -756,7 +759,7 @@ function MoneyRequestConfirmationList(
+             return false;
+         }
+ 
+-        if (iouType === CONST.IOU.TYPE.PAY) {
++        if (iouType === CONST.IOU.TYPE.PAY || iouType === CONST.IOU.TYPE.SEND) {
+             return true;
+         }
+ 
+@@ -776,7 +779,7 @@
