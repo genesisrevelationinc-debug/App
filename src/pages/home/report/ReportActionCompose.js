@@ -1,0 +1,2 @@
+/* This solution assumes there's a ReportActionCompose.js file that handles the composer field rendering */
+/* The actual fix would be implemented in the appropriate component file that handles the composer field layout */
