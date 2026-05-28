@@ -1,77 +1,45 @@
+import {Linking, InteractionManager} from 'react-native';
 import Onyx from 'react-native-onyx';
+import _ from 'underscore';
 import lodashGet from 'lodash/get';
-import Str from 'expensify-common/lib/str';
-import moment from 'moment';
-import ONYXKEYS from '../../ONYXKEYS';
-import * as Validation from '../Validation';
-import * as Welcome from './Welcome';
-import * as PersonalDetailsUtils from '../PersonalDetailsUtils';
-import * as ReportUtils from '../ReportUtils';
-import Log from '../Log';
-import * as ReportActionsUtils from '../ReportActionsUtils';
 import * as CollectionUtils from '../CollectionUtils';
-    });
+import * as EmojiUtils from '../EmojiUtils';
+import * as UserUtils from '../UserUtils';
+import * as ReportUtils from '../ReportUtils';
+import Navigation from '../Navigation/Navigation';
+import * as Device from './Device';
+import * as Session from './Session';
+    return optimisticReportActionID;
 }
 
 /**
- * Fetch chat reports by IDs to ensure Concierge messages are properly synced
- * 
- * @param {Array} reportIDs
- */
-function fetchChatReportsByIDs(reportIDs) {
-    const promises = [];
-    _.each(reportIDs, (reportID) => {
-        // Ensure we fetch the latest report data to prevent "Concierge is thinking..." from disappearing
-        const reportPromise = API.GetReport({
-            reportID,
-        }).then((response) => {
-            if (response.report) {
-                Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`, response.report);
-            }
-        });
-        promises.push(reportPromise);
-    });
-}
-
-/**
- * Add an action item to a report
- *
- * @param {String} reportAction.message
- * @param {Object} reportAction
- */
- 
-function updateLastReadActionID(reportID, lastReadActionID) {
-    Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`, {
-        lastReadActionID,
-    });
-}
-
-/**
- * Ensure Concierge chat history is properly maintained when messages are sent via search
- *
+ * Add a Concierge message to a report and ensure it persists in history
  * @param {String} reportID
- * @param {Boolean} shouldMarkAsRead
+ * @param {String} text
+ * @param {Boolean} isAttachment
+ * @param {Object} attachmentInfo
+ * @param {Object} file
+ * @returns {Promise}
  */
-function showConciergeHistory(reportID, shouldMarkAsRead = true) {
-    if (!reportID) {
-        return;
-    }
+function addConciergeMessage(reportID, text, isAttachment = false, attachmentInfo = {}, file = {}) {
+    // Ensure Concierge messages are properly stored and displayed
+    const conciergeChatReportID = ReportUtils.getConciergeChatReportID();
     
-    // Force refresh the report to ensure "Concierge is thinking..." state is maintained
-    fetchChatReportsByIDs([reportID]);
+    // Use InteractionManager to ensure UI updates properly
+    InteractionManager.runAfterInteractions(() => {
+        addCommentReport(conciergeChatReportID, text, text, isAttachment, attachmentInfo, file);
+    });
 }
 
 /**
- * Updates the last read action ID and updates the optimistic report ID
+ * Adds a comment to a chat report, adds a comment to a task report, or creates a new task report
  *
- * @param {String} reportID
- * @param {String} lastReadTime
- */
- 
-function subscribeToReportTypingEvents(reportID) {
-    if (!reportID) {
-        return;
-    subscribeToReportChannel(reportID);
+    return optimisticReportActionID;
 }
 
-export {addActions, fetchChatReportsByIDs, showConciergeHistory};
+// Export the new function
+export {addConciergeMessage};
+
+function addCommentToReport(reportID, text, html, isAttachment = false, attachmentInfo = {}, file = {}) {
+    return addCommentReport(reportID, text, html, isAttachment, attachmentInfo, file);
+}
