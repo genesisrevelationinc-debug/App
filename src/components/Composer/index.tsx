@@ -3,65 +3,53 @@ import React, {useCallback, useEffect, useMemo, useRef, useState, useLayoutEffec
 import {StyleSheet, View} from 'react-native';
 import type {NativeSyntheticEvent, TextInput, TextInputSelectionChangeEventData} from 'react-native';
 import {useSharedValue} from 'react-native-reanimated';
-    const [textInputHeight, setTextInputHeight] = useState(0);
+    const [isRendered, setIsRendered] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [contentHeight, setContentHeight] = useState(0);
-    const textInput = useRef<TextInput | HTMLTextAreaElement | null>(null);
-    const isScrollBarVisible = useSharedValue(false);
-    const [isRendered, setIsRendered] = useState(false);
-        [styles, theme],
+    const [textInputHeight, setTextInputHeight] = useState(0);
+    const textInput = useRef<TextInput | null>(null);
+    const isIOS = getPlatform() === 'ios';
+    const isWeb = getPlatform() === 'web';
+        [onClear],
     );
 
-    // Measure the actual content height to ensure proper sizing when expanded
+    const handleContentSizeChange = useCallback((event: {nativeEvent: {contentSize: {height: number}}}) => {
+        const {height} = event.nativeEvent.contentSize;
+        if (height > 0) {
+            setTextInputHeight(height);
+        }
+    }, []);
+
+    const handleSelectionChange = useCallback(
+        (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+            const {start, end} = event.nativeEvent.selection;
+        [onPasteFile],
+    );
+
     useLayoutEffect(() => {
-        if (!textInput.current) {
+        if (!isExpanded) {
             return;
         }
-        
-        const element = textInput.current as HTMLTextAreaElement;
-        if (element.scrollHeight) {
-            // Add small buffer to prevent cutting off text
-            const newHeight = element.scrollHeight + 4;
-            setContentHeight(newHeight);
+        const newHeight = textInputHeight + 20;
+        if (textInput.current && 'setNativeProps' in textInput.current) {
+            textInput.current.setNativeProps({height: newHeight});
         }
-    }, [textInputHeight, isComposerFullSize]);
+    }, [isExpanded, textInputHeight]);
 
-    const maxHeight = isComposerFullSize ? CONST.COMPOSER.MAX_HEIGHT : CONST.COMPOSER.MAX_HEIGHT_PARTIAL;
-
-    const composerStyle = useMemo(() => {
-            maxHeight,
-            ...style,
-        };
-    }, [maxHeight, style, contentHeight]);
-
-    const composerContentContainerStyle = useMemo(() => {
-        return {
-            maxHeight,
-            ...styles.composerContentContainer,
-        };
-    }, [maxHeight, styles.composerContentContainer, contentHeight]);
-
-    const updateIsFullComposerAvailable = useCallback(() => {
-        if (!textInput.current) {
-        }
-        const element = textInput.current as HTMLTextAreaElement;
-        const inputHeight = element.scrollHeight;
-        const isFullComposerAvailable = inputHeight >= CONST.COMPOSER.MAX_HEIGHT_PARTIAL;
-        setIsFullComposerAvailable(isFullComposerAvailable);
-    }, [maxHeight, setIsFullComposerAvailable]);
-
-                maxHeight={maxHeight}
-                autoCorrect={!disableAutoCorrect}
-                autoComplete="off"
-                style={[composerStyle, isComposerFullSize ? styles.overflowVisible : styles.overflowHidden]}
+    useEffect(() => {
+        if (!autoFocus || !textInput.current) {
+            return;
+                onSelectionChange={handleSelectionChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
-                onKeyPress={handleKeyPress}
-                onScroll={(e) => {
-                    isScrollBarVisible.value = e.nativeEvent.contentOffset.y > 0;
-                }}
-                textBreakStrategy="simple"
-            />
-        </View>
-    );
+                onContentSizeChange={handleContentSizeChange}
+                style={[
+                    styles.textInput,
+                    styles.verticalAlignTop,
+                    isComposerFullScreen ? styles.composerHeight : undefined,
+                    maxHeightStyle,
+                    isAutoGrowHeight ? undefined : {height: 'auto'},
+                    isExpanded ? {minHeight: textInputHeight + 20} : undefined,
+                ]}
+                maxHeight={maxHeight}
+                maxLines={maxLines}
