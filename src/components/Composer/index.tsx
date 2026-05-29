@@ -10,46 +10,30 @@ import {useSharedValue} from 'react-native-reanimated';
     const textInput = useRef<TextInput | null>(null);
     const isIOS = getPlatform() === 'ios';
     const isWeb = getPlatform() === 'web';
-        [onClear],
-    );
-
-    const handleContentSizeChange = useCallback((event: {nativeEvent: {contentSize: {height: number}}}) => {
-        const {height} = event.nativeEvent.contentSize;
-        if (height > 0) {
-            setTextInputHeight(height);
-        }
-    }, []);
-
-    const handleSelectionChange = useCallback(
-        (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-            const {start, end} = event.nativeEvent.selection;
-        [onPasteFile],
+        [styles, maxLines, isComposerFullScreen],
     );
 
     useLayoutEffect(() => {
-        if (!isExpanded) {
+        if (!textInput.current) {
             return;
         }
-        const newHeight = textInputHeight + 20;
-        if (textInput.current && 'setNativeProps' in textInput.current) {
-            textInput.current.setNativeProps({height: newHeight});
-        }
-    }, [isExpanded, textInputHeight]);
+        textInput.current.measure((x, y, width, height) => setTextInputHeight(height));
+    }, [textInput, isComposerFullScreen, value]);
 
-    useEffect(() => {
-        if (!autoFocus || !textInput.current) {
-            return;
-                onSelectionChange={handleSelectionChange}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                onContentSizeChange={handleContentSizeChange}
-                style={[
-                    styles.textInput,
-                    styles.verticalAlignTop,
-                    isComposerFullScreen ? styles.composerHeight : undefined,
-                    maxHeightStyle,
-                    isAutoGrowHeight ? undefined : {height: 'auto'},
-                    isExpanded ? {minHeight: textInputHeight + 20} : undefined,
-                ]}
-                maxHeight={maxHeight}
-                maxLines={maxLines}
+    const maxHeight = useMemo(() => {
+        if (isComposerFullScreen) {
+            return undefined;
+    const composerStyle = useMemo(
+        () => ({
+            ...styles.textInput,
+            ...(isComposerFullScreen ? {minHeight: textInputHeight} : {}),
+            maxHeight,
+            ...style,
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [maxHeight, isComposerFullScreen, style, styles.textInput, styles.composerHeightFullScreen],
+    );
+
+    const handleSelectionChange = useCallback(
+        (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+            if (!onSelectionChange) {
