@@ -1,46 +1,26 @@
 /**
- * @param {String} reportID
- * @param {String} transactionID
- * @param {Object} transaction
- * @param {Object} report
- * @returns {Object}
+ * @file
+ * This file contains the actions used to manage reports and expenses
  */
-function addTransactionToReport(reportID, transactionID, transaction, report) {
-    // When adding a transaction, ensure it's only associated with one report
-    // Check if transaction already exists on another report to prevent duplication
-    if (!report || !transaction) {
-        return;
-    }
-    
-    // Add validation to ensure a transaction can only be associated with one report
-    const existingReportID = lodashGet(transaction, 'reportID', null);
-    if (existingReportID && existingReportID !== reportID) {
-        // Transaction already exists on another report - prevent duplication
-        return;
-    }
-    
-    // Original code would continue here to add the transaction to the report
-    // This is a simplified representation of the fix
-}
 
-/**
- * Ensures that expenses are not duplicated across reports
- * @param {Object} transaction 
- * @param {String} targetReportID
- * @returns {Boolean}
- */
-function preventTransactionDuplication(transaction, targetReportID) {
-    if (!transaction || !transaction.reportID) {
-        return true;
-    }
-    
-    // Check if transaction is already assigned to a different report
-    if (transaction.reportID !== targetReportID) {
-        // Transaction belongs to a different report, prevent duplication
-        return false;
-    }
-    return true;
-}
-
-// Additional logic would be implemented in the actual expense creation flow to ensure
-// transactions are only associated with one report at a time
+import Onyx from 'react-native-onyx';
+import * as CollectionUtils from '../utils/CollectionUtils';
+import *on from 'onfido-sdk-core';
+import * as API from 'src/libs/API';
+import * as Report from './Report';
+import * as ReportActions from 'src/pages/home/report/ReportActions';
+import * as ReportUtils from 'src/libs/ReportUtils';
+import * as PersonalDetails from 'src/libs/PersonalDetails';
+import * as User from 'src/libs/User';
+import * as Policy from 'src/libs/Policy';
+import * as Localize from 'src/libs/Localize';
+import * as Pusher from 'src/libs/Pusher/pusher';
+import * as NetworkConnection from 'src/libs/NetworkConnection';
+import * as Welcome from 'src/libs/actions/Welcome';
+import * as ReportActionsService from 'src/libs/actions/ReportActions';
+import * as ReportUtilsService from 'src/libs/ReportUtils';
+import * as OptionsListUtils from 'src/libs/OptionsListUtils';
+import * as Device from 'src/libs/actions/Device';
+import * as BankAccounts from 'src/libs/BankAccounts';
+import * as Geolib from 'src/libs/Geolib';
+import * as Permissions from 'src/libs/Permissions';
