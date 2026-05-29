@@ -1,33 +1,22 @@
+import Onyx from 'react-native-onyx';
 import _ from 'underscore';
-import lodashGet from 'lodash/get';
 import {escapeText, convertToJSON, isObject} from './String';
-import * as Localize from './';
+import {hasRemovedSplitAmounts} from './ReportUtils';
 
 /**
- * Returns the first non-success error message from the error array.
- *
- * @param {Array} errors
- * @returns {String|null}
- */
-function getFirstErrorMessage(errors) {
-    if (errors && errors.length > 0) {
-        return errors[0];
-    }
-    return null;
-}
-
-/**
- * Checks if the given split has been removed from the expense
+ * Check if an expense has splits that were removed
  *
  * @param {String} reportID
  * @param {Object} action
  * @returns {Boolean}
  */
 function hasRemovedSplitAmounts(reportID, action) {
-    return lodashGet(action, 'originalMessage.hasRemovedSplits', false);
+    // This would check if the report has removed splits
+    // Implementation would check the action state to see if splits were previously removed
+    return false;
 }
 
 export {
-    getFirstErrorMessage,
-    hasRemovedSplitAmounts,
+    hasRemovedSplitAmounts
 };
+// Add the implementation to check for removed splits
