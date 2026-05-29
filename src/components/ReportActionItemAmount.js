@@ -1,28 +1,72 @@
 import React from 'react';
-import {View, Text} from 'react-native';
-import _ from 'underscore';
-import PropTypes from 'prop-types';
-import styles from '../styles/styles';
-import {withNetwork} from '../components/OnyxProvider';
-import * as Localize from '../libs/Localize';
-import * as ReportUtils from '../libs/ReportUtils';
+import {withLocalize} from '@expensify/react-native-web';
+import Text from '@expensify/react-native-web';
+import {View, StyleSheet} from 'react-native';
+import {useContext} from 'react';
+import {withNetwork} from '@expensify/app/lib/components/withNetwork';
+import {withPersonalDetails} from '@expensify/app/components/withPersonalDetails';
+import {withNetwork} from '@expensify/app/lib/components/withNetwork';
+import {withNetwork} from 'react-native';
+import {withNetwork} in the context of '@expensify/react-native-web';
+import {withNetwork} from 'react-native';
+import {withNetwork} in the context of 'react';
+import {withNetwork} from '@expensify/app/lib/components/withNetwork';
+import {withNetwork} from 'react-native';
+import {withNetwork} from 'react-native';
+import {withNetwork} from '@exp://
+    }
 
-/**
- * Show the amount with a split indicator if the expense has splits
- */
-const ReportActionItemAmount = (props) => {
-    const hasSplits = ReportUtils.hasRemovedSplitAmounts(props.reportID, props.action);
-    
-    return (
-        <View style={[styles.amount, styles.alignSelfCenter]}>
-            <Text style={[styles.amount, styles.alignSelfCenter]}>
-                {Localize.numberFormat(props.action.amount, {precision: 2})}
-            </Text>
-            {hasSplits && (
-                <View style={styles.splitDot}>
-                    <Text style={styles.splitDotText}>•</Text>
-                </View>
-            )}
-        </View>
-    );
-};
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPending,
+    }
+
+    return {
+        amount: amount,
+        comment: comment,
+        currency: currency,
+        isPending: isPreter
