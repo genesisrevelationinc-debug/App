@@ -1,10 +1,9 @@
-import type {ImageStyle, TextStyle, ViewStyle} from 'react-native';
-import type {CustomUtils, MixedStyleDeclaration} from 'react-native-render-html';
-import type {SharedValue} from 'react-native-reanimated';
-import {Platform} from 'react-native';
-import type {EdgeInsets} from 'react-native-safe-area-context';
-import type {OnyxEntry} from 'react-native-onyx';
-import type {TupleToUnion} from 'type-fest';
+/* eslint-disable max-lines */
+/* eslint-disable @typescript-eslint/naming-convention */
+import type {LineLayerStyleProps} from '@rnmapbox/maps/src/utils/MapboxStyles';
+import lodashClamp from 'lodash/clamp';
+import type {LineLayer} from 'react-map-gl';
+// eslint-disable-next-line no-restricted-imports
 import type {Animated, ImageStyle, TextStyle, ViewStyle} from 'react-native';
 import {Platform, StyleSheet} from 'react-native';
 import type {PickerStyle} from 'react-native-picker-select';
@@ -478,52 +477,43 @@ const staticStyles = (theme: ThemeColors) =>
         textLabel: {
             color: theme.text,
             fontSize: variables.fontSizeLabel,
-            overflow: 'hidden',
+            lineHeight: variables.lineHeightLarge,
         },
 
-        overflowVisible: {
-            overflow: 'visible',
+        themeTextColor: {
+            color: theme.text,
         },
-
-        textInput: {
-            backgroundColor: theme.transparent,
-            borderRadius: variables.componentBorderRadiusSmall,
 
         mutedTextLabel: {
             color: theme.textSupporting,
             fontSize: variables.fontSizeLabel,
-            paddingBottom: 10,
-            paddingTop: 10,
-            minHeight: variables.componentSizeNormal,
-            paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+            lineHeight: variables.lineHeightLarge,
         },
 
-        textInputMultiline: {
+        mutedNormalTextLabel: {
+            color: theme.textSupporting,
+            fontSize: variables.fontSizeLabel,
             lineHeight: variables.lineHeightNormal,
-            paddingTop: 10,
-            paddingBottom: 10,
-            minHeight: variables.componentSizeNormal,
-            paddingVertical: Platform.OS === 'ios' ? 10 : 8,
         },
 
-        textInputMultilineLG: {
-
-            paddingTop: 13,
-            paddingBottom: 13,
-            minHeight: variables.componentSizeLarge,
-            paddingVertical: Platform.OS === 'ios' ? 13 : 11,
-        },
-
-        composerContentContainer: {
+        textSmall: {
             ...FontUtils.fontFamily.platform.EXP_NEUE,
-            paddingTop: 5,
-            paddingBottom: 5,
-            minHeight: variables.componentSizeNormal,
-            paddingVertical: Platform.OS === 'ios' ? 5 : 4,
-            marginBottom: 2,
+            fontSize: variables.fontSizeSmall,
         },
 
-        // ... rest of styles
+        textExtraSmall: {
+            ...FontUtils.fontFamily.platform.EXP_NEUE,
+            fontSize: variables.fontSizeExtraSmall,
+        },
+
+        textMicro: {
+            ...FontUtils.fontFamily.platform.EXP_NEUE,
+            fontSize: variables.fontSizeSmall,
+            lineHeight: variables.lineHeightSmall,
+        },
+
+        textMicroBold: {
+            color: theme.text,
             ...FontUtils.fontFamily.platform.EXP_NEUE_BOLD,
             fontSize: variables.fontSizeSmall,
             lineHeight: variables.lineHeightNormal,
@@ -980,6 +970,12 @@ const staticStyles = (theme: ThemeColors) =>
         actionableItemButtonText: {
             textAlign: 'left',
             ...wordBreak.breakWord,
+        },
+
+        actionableItemButtonSkeleton: {
+            alignItems: 'flex-start',
+            borderRadius: 20,
+            backgroundColor: theme.buttonDefaultBG,
         },
 
         hoveredComponentBG: {
@@ -1689,11 +1685,11 @@ const staticStyles = (theme: ThemeColors) =>
             alignItems: 'center',
         },
 
-        signInPageGradient: {
-            height: '100%',
-            width: 540,
-            position: 'absolute',
-            top: 0,
+        composerHeightFullScreen: {
+            minHeight: '100%',
+        },
+
+        chatItemFullScreenComposite: {
             left: 0,
         },
 
@@ -5435,8 +5431,8 @@ const staticStyles = (theme: ThemeColors) =>
         },
 
         emptyStateSamlIllustration: {
-            width: 218,
-            height: 190,
+            width: 183,
+            height: 160,
         },
 
         agentsPageEmptyStateIllustration: {
