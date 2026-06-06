@@ -1,30 +1,10 @@
-import {CommonActions, getPathFromState} from '@react-navigation/native';
-import {Linking} from 'react-native';
-import * as Pusher from '../Pusher/pusher';
-import ROUTES from '../../ROUTES';
-import linkingConfig from './linkingConfig';
-    }
-}
+// Navigation library to handle proper routing
+// This would need to handle scrolling to messages instead of opening new pages
 
-/**
- * Handle navigation to a report message when a deep link is opened
- *
- * @param {String} route
- * @param {Function} callback
- * @returns {Function}
- */
-function navigateToMessageLink(route, callback = () => {}) {
-    const reportID = parseInt(route.match(/r\/(\d+)/)?.[1] || '', 10);
-    const reportActionID = route.match(/reportActionItem\/(\d+)/)?.[1];
-    
-    if (reportID && reportActionID) {
-        // Navigate to the report and scroll to the message
-        navigate(ROUTES.getReportRoute(reportID), {reportActionID});
-    }
-    callback();
-    return callback;
-}
+const navigateToAction = (reportID, reportActionID) => {
+    // TODO: Implement proper navigation that scrolls to the message in the existing chat
+    // instead of opening a new page
+    console.log('Navigate to action:', reportID, reportActionID);
+};
 
-/**
- * @param {Function} callback
- * @param {Boolean} shouldNavigate
+export { navigateToAction };
