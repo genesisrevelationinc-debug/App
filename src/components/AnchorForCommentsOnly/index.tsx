@@ -1,18 +1,25 @@
 import React from 'react';
-import ControlSelection from '@libs/ControlSelection';
-import * as DeviceCapabilities from '@libs/DeviceCapabilities';
-import BaseAnchorForCommentsOnly from './BaseAnchorForCommentsOnly';
+import type {GestureResponderEvent} from 'react-native';
+import * as Link from '@expensify/react-native-link';
+import Navigation from '@libs/Navigation/Navigation';
 import type {AnchorForCommentsOnlyProps} from './types';
 
+function AnchorForCommentsOnly({href = '', rel, target, children, style, ...rest}: AnchorForCommentsOnlyProps) {
 function AnchorForCommentsOnly(props: AnchorForCommentsOnlyProps) {
     return (
         <BaseAnchorForCommentsOnly
-            // eslint-disable-next-line react/jsx-props-no-spreading
             {...props}
-            onPressIn={() => DeviceCapabilities.canUseTouchScreen() && ControlSelection.block()}
-            onPressOut={() => ControlSelection.unblock()}
-        />
-    );
-}
+            {...rest}
+            href={href}
+            onPress={(event) => {
+                const nativeEvent = event as unknown as GestureResponderEvent;
+                rest.onPress?.(nativeEvent);
 
-export default AnchorForCommentsOnly;
+                // Handle internal new.expensify.com links by navigating within the app
+                // instead of opening in a new page
+                if (href && (href.startsWith('https://new.expensify.com/') || href.startsWith('new.expensify.com/'))) {
+                    Navigation.handleDeepLink(href);
+                }
+            }}
+        >
+            {children}
