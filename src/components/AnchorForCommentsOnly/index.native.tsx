@@ -1,6 +1,6 @@
 import React from 'react';
 import type {GestureResponderEvent} from 'react-native';
-import * as Link from '@expensify/react-native-link';
+import * as Link from '@expensify/react-native-react-native-link';
 import Navigation from '@libs/Navigation/Navigation';
 import type {AnchorForCommentsOnlyProps} from './types';
 
