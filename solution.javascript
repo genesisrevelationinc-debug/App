@@ -1,1 +1,1 @@
-const shouldShowNotFoundPage = !report || !report.reportID;
+const shouldShowNotFoundPage = !isLoadingReportData && !report;
