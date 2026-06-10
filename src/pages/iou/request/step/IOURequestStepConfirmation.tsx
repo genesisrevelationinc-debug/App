@@ -1,9 +1,8 @@
+import {useRoute} from '@react-navigation/native';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {View} from 'react-native';
-import {useOnyx} from 'react-native-onyx';
 import type {OnyxEntry} from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
-import Button from '@components/Button';
+import {useOnyx} from 'react-native-onyx';
 import DropZoneUI from '@components/DropZone/DropZoneUI';
 import FullScreenLoadingIndicator from '@components/FullscreenLoadingIndicator';
 import HeaderWithBackButton from '@components/HeaderWithBackButton';
@@ -13,38 +12,35 @@ import {usePersonalDetails, usePolicyCategories} from '@components/OnyxListItemP
 import ParticipantPicker from '@components/ParticipantPicker';
 import PrevNextButtons from '@components/PrevNextButtons';
 import ScreenWrapper from '@components/ScreenWrapper';
-import useNetwork from '@hooks/useNetwork';
-import useThemeStyles from '@hooks/useThemeStyles';
-import * as DeviceCapabilities from '@libs/DeviceCapabilities';
-import * as IOUUtils from '@libs/IOUUtils';
-import Navigation from '@libs/Navigation/Navigation';
-import * as OptionsListUtils from '@libs/OptionsListUtils';
-import * as ReportUtils from '@libs/ReportUtils';
+import useConfirmModal from '@hooks/useConfirmModal';
+import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
+import useDefaultParticipants from '@hooks/useDefaultParticipants';
+import useFetchRoute from '@hooks/useFetchRoute';
+import useFilesValidation from '@hooks/useFilesValidation';
+import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useNetwork from '@hooks/useNetwork';
+import useOdometerReceiptStitcher from '@hooks/useOdometerReceiptStitcher';
+import useOnyx from '@hooks/useOnyx';
+import useOptimisticDraftTransactions from '@hooks/useOptimisticDraftTransactions';
+import useParticipantsPolicies from '@hooks/useParticipantsPolicies';
+import usePermissions from '@hooks/usePermissions';
+import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
+import usePrivateIsArchivedMap from '@hooks/usePrivateIsArchivedMap';
 import * as IOU from '@userActions/IOU';
+import * as PolicyActions from '@userActions/Policy/Policy';
+import * as TransactionActions from '@userActions/Transaction';
+import * as TransactionUtils from '@libs/TransactionUtils';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {Route} from '@src/ROUTES';
-import ROUTES from '@src/ROUTES';
 import type SCREENS from '@src/SCREENS';
-import type {Transaction} from '@src/types/onyx';
-import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
-import type {Participant} from '@src/types/onyx/Transaction';
-import {isEmptyObject} from '@src/types/utils/EmptyObject';
-import {getParticipantsFromAccountIDs} from '@libs/TransactionUtils';
-import * as PolicyUtils from '@libs/PolicyUtils';
-import MoneyRequestConfirmationList from './MoneyRequestConfirmationList';
-import StepScreenWrapper from './StepScreenWrapper';
-import withFullTransactionOrNotFound from './withFullTransactionOrNotFound';
-import {setMoneyRequestBillable, setMoneyRequestReimbursable} from '@libs/actions/IOU/MoneyRequest';
 import {setTransactionReport} from '@libs/actions/Transaction';
-import {isMobileSafari} from '@libs/Browser';
-import {canUseTouchScreen} from '@libs/DeviceCapabilities';
-import getIsNarrowLayout from '@libs/getIsNarrowLayout';
-import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
-import {
-    getIsWorkspacesOnlyForTransaction,
-    isMovingTransactionFromTrackExpense as isMovingTransactionFromTrackExpenseIOUUtils,
+import type {Transaction} from '@src/types/onyx';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import {isTranslationEntry} from '@src/types/utils/TranslationUtils';
+import type {IOURequestStepConfirmationProps} from './types';
+
+function IOURequestStepConfirmation({
     navigateToStartMoneyRequestStep,
     resolveOptimisticChatReportID,
     resolveReportForMoneyRequest,
@@ -57,37 +53,35 @@ import isSearchTopmostFullScreenRoute from '@libs/Navigation/helpers/isSearchTop
 import {submitWithDismissFirst} from '@libs/Navigation/helpers/submitWithDismissFirst';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
 import type {MoneyRequestNavigatorParamList} from '@libs/Navigation/types';
-    const [receiptFile, setReceiptFile] = useState<File | undefined>(undefined);
-    const requestRef = useRef<HTMLFormElement | null>(null);
-    const isDistanceRequest = TransactionUtils.isDistanceRequest(transaction);
     const [personalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST);
-    const [userWallet] = useOnyx(ONYXKEYS.USER_WALLET);
-    const [bankAccountList] = useOnyx(ONYXKEYS.BANK_ACCOUNT_LIST);
+    const [policyCategories] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES}${policyID}`);
+    const [policyTags] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_TAGS}${policyID}`);
+    const [isCreatingNewReport, setIsCreatingNewReport] = useState(false);
 
-    const isSubmitting = transaction?.isLoading ?? false;
-    const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(report), [report]);
+    const requestType = TransactionUtils.getRequestType(transaction);
+    const isDistanceRequest = requestType === 'distance';
     hasReceipt,
     isDistanceRequest as isDistanceRequestTransactionUtils,
     isManualDistanceRequest as isManualDistanceRequestTransactionUtils,
     isOdometerDistanceRequest as isOdometerDistanceRequestTransactionUtils,
     isScanRequest,
 } from '@libs/TransactionUtils';
-        [transaction],
-    );
+    const isFromGlobalCreate = action === CONST.IOU.ACTION.CREATE;
+    const isSubmitting = transaction?.isLoading ?? false;
 
-    const isSendMoneyFlow = useMemo(() => {
-        return IOUUtils.isSendMoneyFlow(action);
-    }, [action]);
+    useEffect(() => {
+        if (!isFromGlobalCreate || !transaction?.transactionID) {
+            return;
+        }
+        setIsCreatingNewReport(true);
+        return () => {
+            setIsCreatingNewReport(false);
+        };
+    }, [isFromGlobalCreate, transaction?.transactionID]);
 
-    const canUseWallet = useMemo(() => {
-        return PolicyUtils.canUseWallet(personalDetails, userWallet, bankAccountList);
-    }, [personalDetails, userWallet, bankAccountList]);
+    const shouldShowSmartScanFields =
+        receiptPath && !isDistanceRequest ? isReceiptBeingScanned || !receiptFilename || receiptState === CONST.IOU.RECEIPT_STATE.SCANNING : true;
 
-    const shouldShowPaymentOptions = isSendMoneyFlow;
-
-    const isSharingTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
-    const isTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
-    const isTrackExpenseConvertible = isTrackExpense && !isSharingTrackExpense;
 import type {Route} from '@src/ROUTES';
 import ROUTES from '@src/ROUTES';
 import SCREENS from '@src/SCREENS';
@@ -194,13 +188,13 @@ function IOURequestStepConfirmation({
         action,
         iouType,
         isPerDiemRequest,
-    });
-    const policyID = policy?.id;
-    const isDraftPolicy = policy === policyDraft;
-
-    const [policyCategoriesDraft] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES_DRAFT}${draftPolicyID}`);
-
-    const [draftTransactionIDs] = useOnyx(ONYXKEYS.COLLECTION.TRANSACTION_DRAFT, {
+                        iouType={iouType}
+                        reportID={reportID}
+                        isPolicyExpenseChat={isPolicyExpenseChat}
+                        isCreatingNewReport={isCreatingNewReport}
+                        policyID={policyID}
+                        transactionID={transactionID}
+                        shouldShowSmartScanFields={shouldShowSmartScanFields}
         selector: validTransactionDraftIDsSelector,
     });
 
@@ -232,14 +226,12 @@ function IOURequestStepConfirmation({
     const isDistanceRequest = isDistanceRequestTransactionUtils(transaction);
     const isManualDistanceRequest = isManualDistanceRequestTransactionUtils(transaction);
     const isManualRequest = transaction?.iouRequestType === CONST.IOU.REQUEST_TYPE.MANUAL;
-                        iouType={iouType}
-                        isReadOnly={!isOnline}
-                        isPolicyExpenseChat={isPolicyExpenseChat}
-                        isSendMoneyFlow={isSendMoneyFlow}
-                        shouldShowPaymentOptions={shouldShowPaymentOptions}
-                        policyID={policyID}
-                        receiptPath={receiptFile?.uri ?? ''}
-                        receiptFilename={receiptFile?.name ?? ''}
+    const isOdometerDistanceRequest = isOdometerDistanceRequestTransactionUtils(transaction);
+    const isTimeRequest = requestType === CONST.IOU.REQUEST_TYPE.TIME;
+    const [lastLocationPermissionPrompt] = useOnyx(ONYXKEYS.NVP_LAST_LOCATION_PERMISSION_PROMPT);
+    const privateIsArchivedMap = usePrivateIsArchivedMap();
+
+    const receiptFilename = transaction?.receipt?.filename;
     const receiptPath = transaction?.receipt?.source;
     const isEditingReceipt = hasReceipt(transaction);
     const isSharingTrackExpense = action === CONST.IOU.ACTION.SHARE;
