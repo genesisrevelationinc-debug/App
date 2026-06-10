@@ -5,7 +5,7 @@ import * as TaskManager from 'expo-task-manager';
 const BACKGROUND_FETCH_TASK = 'background-fetch-task';
 const BACKGROUND_NOTIFICATION_TASK = 'background-notification-task';
 
-// 1. Task and Event-Listener defs
+// 1. Task and Event-Listener defs  
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, (data) => {
     // Add null checks to prevent NullPointerException
     if (!data) {
@@ -13,10 +13,10 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, (data) => {
         return;
     }
     
-    const { data: { tasks } } = data;
+    const { data: taskData } = data;
     
     // Process the task with proper null checks
-    if (!tasks) {
+    if (!taskData) {
         console.warn('Task payload is null or undefined');
         return;
     }
