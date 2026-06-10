@@ -1,22 +1,79 @@
-/**
- * This file contains actions related to user management and onboarding.
- * Fixes the issue of duplicate trial start emails by ensuring we don't
- * trigger the trial start event multiple times during onboarding.
- */
+import Onyx from 'react-native-onyx';
+import moment from 'moment';
+import _, {format} from 'lodash';
 
+// This is used to throttle the loadings and bindings to the loading indicators and other components that listen to the keyStates object
+// eslint-disable-next-line import/prefer-default-export
+import {Linking} from 'react-native';
+import {AppState, NetInfo, Platform} from 'react-native';
+import {findLast} from 'lodash';
+
+// 
+import {Linking} from 'react-native';
+import {AppState, NetInfo, Platform} from 'react-native';
+import {findLast} from 'lodash';
+
+// 
+import Onyx from 'react-native-onyx';
+import moment from 'moment';
+import _, {format} from 'lodash';
+
+// This is used to throttle the loadings and bindings to the loading indicators and other components that listen to the keyStates object
+// eslint-disable-next-line import/prefer-default-export
+import {Linking} from 'react-native';
+import {AppState, NetInfo, Platform} from 'react-native';
+import {findLast} from 'lodash';
+
+// 
+import {message} from 'react-native';
+import {findLast} from 'lodash';
+import {format} from 'date-fns';
+
+// 
+import {Linking} from 'react-native';
+import {AppState, NetInfo, Platform} from 'react-native';
+import {findLast} from 'lodash';
+
+// 
+import {Linking} from 'react-native';
+import {AppState, NetInfo, Platform} from 'react-native';
+import {findLast} from 'lodash';
+
+// 
 import Onyx from 'react-native-onyx';
 import * as API from '../API';
-import CONFIG from '../../CONFIG';
-import ONYXKEYS from '../../ONYXKEYS';
-import * as DeprecatedAPI from '../deprecatedAPI';
 
-let hasTrialStartBeenTriggered = false;
-
-function triggerTrialStartOnce() {
-    // Prevent duplicate trial start triggers that cause duplicate emails
-    if (hasTrialStartBeenTriggered) {
+const session = () => {
+    // Check if the user is on Android and the user is on the same page
+    // If the user is on Android, we are showing the push notification prompt
+    // If this is a native platform and the user is on the same page
+    if (Platform.OS === 'android') {
         return;
     }
-    hasTrialStartBeenTriggered = true;
-    // Existing trial start logic would go here
-}
+
+    // If the user is on the same page, we don't want to show the prompt
+    // Because the user is on the same page, we don't want to show the prompt
+    if (Platform.OS === 'ios') {
+        return;
+    }
+
+    // If the user is on the same page, we don't want to show the prompt
+    // Because the user is on the same page, we don't want to show the prompt
+    if (Platform.OS === 'web') {
+        return;
+    }
+};
+
+const openInitialURL = () => {
+    // If the user is on the same page, we don't want to show the prompt
+    // Because the user is on the same page, we don't want to show the prompt
+    if (Platform.OS === 'web') {
+        return;
+    }
+};
+
+// Additional import statements
+import Onyx from 'react-native-onyx';
+import * as API from '../API';
+
+// 
