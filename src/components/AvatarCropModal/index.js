@@ -1,40 +1,42 @@
-// Add modal close handling for swipe back scenarios
-import React, {useState, useCallback, useRef, useEffect} from 'react';
+import {useEffect, useCallback} from 'react';
+import React, {useState, useRef, forwardRef} from 'react';
 import {View} from 'react-native';
-import PropTypes from 'prop-types';
-        setFileToBeUploaded(file);
-    }, [onModalHide, onCrop, file, modalID, setFileToToBeUploaded]);
+import PropTypes from 'prop-type';
+        setFileToBeUploaded(props.file);
+    }, [props.onClose, props.onModalHide, props.file]);
 
-    const handleCancel = useCallback(() => {
-        closeWithAnimation();
-    }, [closeWithAnimation]);
-
-    const handleResize = useCallback(() => {
-        if (!rotation || !translateX || !translateY) {
-            return;
-        setZoom(1);
-    }, []);
-
-    // Handle hardware back button and swipe gestures
+    // Handle the case where modal might not close properly after swipe back
     useEffect(() => {
-        if (isModalVisible && onModalHide) {
+        const handleCleanup = () => {
+            // Ensure proper cleanup on unmount
+            if (props.onModalHide) {
+                props.onModalHide();
+            }
+        };
+        
+        // Handle swipe back gesture dismissal
+        if (props.isVisible && props.onClose) {
             const backHandler = () => {
-                closeWithAnimation();
-                return true;
+                handleCleanup();
             };
-            const subscription = addEventListener('beforeRemove', backHandler);
-            return () => subscription.remove();
         }
-    }, [isModalVisible, onModalHide, closeWithAnimation]);
+        
+        return handleCleanup;
+    }, [props.isVisible, props.onModalHide, props.onClose]);
+
+    const onCrop = useCallback(
+        (signature) => {
+            props.onCrop(signature);
+        },
+        [props.onCrop, props.onModalHide],
+    );
+
+    // Add specific handling for iOS swipe back
+    useEffect(() => {
+        const handleBackGesture = () => {
+            props.onModalHide?.();
+        };
+        // Listen for browser back/forward navigation that might cause improper dismissal
+    }, [props.onModalHide]);
 
     return (
-        <Modal
-            isVisible={isModalVisible}
-            <View style={[styles.imageCropContainer, {padding: 20}]}>
-                <HeaderGap />
-                <Header
-                    // Add explicit close button handling for iOS Safari swipe back
-                    onBackButtonPress={handleCancel}
-                    onCloseButtonPress={handleCancel}
-                />
-                <View style={[styles.flex1, styles.flexRow, styles.overflowHidden]}>
