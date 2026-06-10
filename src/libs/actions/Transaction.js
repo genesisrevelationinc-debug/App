@@ -1,23 +1,14 @@
-import {applyAllExpenseRules} from './Receipts';
+import {applyAllExpenseRules} from './Rule';
 
-/**
- * @package
- */
- * @param {Object} transaction
- * @returns {void}
- */
-/**
- * @param {Object} transaction
- * @returns {void}
- */
-export default function Transaction(transaction) {
-    // Add the transaction to the store
-    addTransaction(transaction);
-    // If the transaction has a receipt, validate it
-    if (transaction.receipt) {
-        validateReceipt(transaction.receipt);
-        
-        // Apply expense rules when a new transaction is created
-        applyAllExpenseRules();
-    }
-}
+// When a new transaction is created (including imported ones), apply expense rules
+const originalCreateTransaction = createTransaction;
+
+createTransaction = (transactionData) => {
+    const transaction = originalCreateTransaction(transactionData);
+    
+    // Apply expense rules to the newly created transaction
+    // This ensures that merchant rules are applied to imported transactions
+    applyAllExpenseRules(transaction);
+    
+    return transaction;
+};
