@@ -5,127 +5,91 @@ import {withOnyx} from 'react-native-onyx';
 import _ from 'underscore';
 import lodashGet from 'lodash/get';
 import moment from 'moment';
-import CONST from '../../../CONST';
-import ONYXKEYS from '../../../ONYXKEYS';
-import styles from '../../../styles/styles';
-import CheckboxWithLabel from '../../../components/CheckboxWithLabel';
-import Text from '../../../components/Text';
-import DatePicker from '../../../components/DatePicker';
-import TextInput from '../../../components/TextInput';
-import Button from '../../../components/Button';
+import compose from '../../../libs/compose';
 import HeaderWithBackButton from '../../../components/HeaderWithBackButton';
 import ScreenWrapper from '../../../components/ScreenWrapper';
-import Form from '../../../components/Form';
-import * as CardUtils from '../../../libs/CardUtils';
-import * as WorkspaceCard from '../../../libs/actions/WorkspaceCard';
-import useLocalize from '../../../hooks/useLocalize';
+import styles from '../../../styles/styles';
 import Navigation from '../../../libs/Navigation/Navigation';
 import ROUTES from '../../../ROUTES';
+import * as Card from '../../../libs/actions/Card';
+import useLocalize from '../../../hooks/useLocalize';
+import Form from '../../../components/Form';
+import * as ValidationUtils from '../../../libs/ValidationUtils';
+import DatePicker from '../../../components/DatePicker';
+import CONST from '../../../CONST';
+import TextInput from '../../../components/TextInput';
+import ONYXKEYS from '../../../ONYXKEYS';
+import Text from '../../../components/Text';
+import Picker from '../../../components/Picker';
+import DateUtils from '../../../libs/DateUtils';
 
 const propTypes = {
-    /** URL params */
-    route: PropTypes.shape({
-        /** Params from the URL path */
-        params: PropTypes.shape({
-            /** policyID is used to get workspace details */
-            policyID: PropTypes.string.isRequired,
-            
-            /** cardID is used to get card details */
-            cardID: PropTypes.string.isRequired,
-        }).isRequired,
-    }).isRequired,
-
-    /** The card being assigned */
-    card: PropTypes.shape({
-        /** The cardID of the card */
-        cardID: PropTypes.string,
-        
-        /** The card name */
-        cardName: PropTypes.string,
-    }),
-
-    /** The policy of the card */
-    policy: PropTypes.shape({
-        /** The policyID of the policy */
-        id: PropTypes.string,
-        
-        /** The name of the policy */
-        name: PropTypes.string,
+    /** Wallet terms */
+    walletTerms: PropTypes.shape({
+        /** The date the card was issued */
+        issuedDate: PropTypes.string,
     }),
 };
 
 const defaultProps = {
-    card: {},
-    policy: {},
+    walletTerms: {},
 };
 
-function AssignCardPage({route, card, policy}) {
-    const {policyID, cardID} = route.params;
+function AssignCardPage({walletTerms}) {
     const {translate} = useLocalize();
-    const [futureDateEnabled, setFutureDateEnabled] = useState(false);
-    const [assignmentDate, setAssignmentDate] = useState(moment().format(CONST.DATE.MOMENT_FORMAT_STRING));
+    const [selectedDate, setSelectedDate] = useState(new Date());
     
-    const handleAssignCard = (values) => {
-        const assigneeEmail = values.assignee;
-        const effectiveDate = futureDateEnabled ? assignmentDate : moment().format(CONST.DATE.MOMENT_FORMAT_STRING);
-        
-        WorkspaceCard.assignCard(policyID, cardID, assigneeEmail, effectiveDate);
-        Navigation.goBack(ROUTES.getWorkspaceCardRoute(policyID));
+    const validate = (values) => {
+        const errors = {};
+        if (!values.selectedDate || !moment(values.selectedDate).isValid()) {
+            errors.selectedDate = 'common.error.fieldRequired';
+        }
+        return errors;
+    };
+
+    const submit = (values) => {
+        // Submit logic would go here
+        // This would include passing the selected date for future assignment
+        Card.assignCard(values.cardID, values.assigneeEmail, values.selectedDate);
     };
 
     return (
         <ScreenWrapper includeSafeAreaPaddingBottom={false}>
             <HeaderWithBackButton
                 title={translate('workspace.card.assignCard')}
-                onBackButtonPress={() => Navigation.goBack()}
+                onBackButtonPress={() => Navigation.goBack(ROUTES.WORKSPACE_CARD)}
             />
             <Form
                 formID={ONYXKEYS.FORMS.ASSIGN_CARD_FORM}
+                validate={validate}
+                onSubmit={submit}
                 submitButtonText={translate('workspace.card.assign')}
-                onSubmit={handleAssignCard}
-                validate={() => ({})}
-                enabledWhenOffline
+                style={[styles.mh5, styles.flexGrow1]}
             >
-                <View style={[styles.mh5, styles.mb5]}>
-                    <Text style={[styles.textHeadline, styles.mb3]}>
-                        {card.cardName || translate('workspace.card.card')}
-                    </Text>
+                <View style={styles.mb4}>
                     <Text style={[styles.textLabelSupporting, styles.mb1]}>
-                        {translate('workspace.card.assignee')}
+                        {translate('workspace.card.assignmentDate')}
                     </Text>
-                    <TextInput
-                        inputID="assignee"
-                        label={translate('workspace.card.assignee')}
-                        accessibilityLabel={translate('workspace.card.assignee')}
-                        accessibilityRole={CONST.ACCESSIBILITY_ROLE.TEXT}
-                        placeholder={translate('workspace.card.enterAssignee')}
+                    <DatePicker
+                        inputID="selectedDate"
+                        label={translate('workspace.card.whenAssign')}
+                        defaultValue={new Date()}
+                        minDate={new Date()}
+                        maxDate={moment().add(1, 'year').toDate()}
                     />
-                    
-                    <CheckboxWithLabel
-                        style={[styles.mb3, styles.mt5]}
-                        isChecked={futureDateEnabled}
-                        onPress={() => setFutureDateEnabled(!futureDateEnabled)}
-                        label={translate('workspace.card.scheduleAssignment')}
+                </View>
+                <View style={styles.mb4}>
+                    <Text style={[styles.textLabelSupporting, styles.mb1]}>
+                        {translate('workspace.card.immediateAssignment')}
+                    </Text>
+                    <Picker
+                        inputID="assignmentType"
+                        items={[
+                            {label: translate('workspace.card.immediate'), value: 'immediate'},
+                            {label: translate('workspace.card.futureDate'), value: 'future'},
+                        ]}
+                        defaultValue="immediate"
                     />
-                    
-                    {futureDateEnabled && (
-                        <View style={styles.mb5}>
-                            <Text style={[styles.textLabelSupporting, styles.mb1]}>
-                                {translate('workspace.card.assignmentDate')}
-                            </Text>
-                            <DatePicker
-                                value={assignmentDate}
-                                onInputChange={setAssignmentDate}
-                                label={translate('workspace.card.assignmentDate')}
-                                placeholder={translate('workspace.card.selectDate')}
-                                maximumDate={moment().add(1, 'years').toDate()}
-                                minimumDate={moment().toDate()}
-                            />
-                            <Text style={[styles.textLabelSupporting, styles.mt1]}>
-                                {translate('workspace.card.assignmentDateHelp')}
-                            </Text>
-                        </View>
-                    )}
                 </View>
             </Form>
         </ScreenWrapper>
@@ -136,10 +100,7 @@ AssignCardPage.propTypes = propTypes;
 AssignCardPage.defaultProps = defaultProps;
 
 export default withOnyx({
-    card: {
-        key: ({route}) => `${ONYXKEYS.COLLECTION.CARD}${route.params.cardID}`,
-    },
-    policy: {
-        key: ({route}) => `${ONYXKEYS.COLLECTION.POLICY}${route.params.policyID}`,
+    walletTerms: {
+        key: ONYXKEYS.WALLET_TERMS,
     },
 })(AssignCardPage);
