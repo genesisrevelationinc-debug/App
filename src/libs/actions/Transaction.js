@@ -1,10 +1,23 @@
-import Onyx from 'react-native-onyx';
-import ONYXKEYS from '../../ONYXKEYS';
-import * as API from '../API';
-import * as Report from './Report';
-import * as ReportActions from './ReportActions';
-import * as Policy from './Policy';
-import * as PersonalDetails from './PersonalDetails';
-import * as User from './User';
-import * as TransactionUtils from '../TransactionUtils';
-import * as Rule from './Rule';
+import {applyAllExpenseRules} from './Receipts';
+
+/**
+ * @package
+ */
+ * @param {Object} transaction
+ * @returns {void}
+ */
+/**
+ * @param {Object} transaction
+ * @returns {void}
+ */
+export default function Transaction(transaction) {
+    // Add the transaction to the store
+    addTransaction(transaction);
+    // If the transaction has a receipt, validate it
+    if (transaction.receipt) {
+        validateReceipt(transaction.receipt);
+        
+        // Apply expense rules when a new transaction is created
+        applyAllExpenseRules();
+    }
+}
