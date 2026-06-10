@@ -1,119 +1,19 @@
-import type {OnyxCollection} from 'react-native-onyx';
+import lodashMemoize from 'lodash/memoize';
+import type {OnyxUpdate} from 'react-native-onyx';
 import Onyx from 'react-native-onyx';
-import {getLinkedTransactionID, getReportAction, getReportActionMessage, isCreatedTaskReportAction} from '@libs/ReportActionsUtils';
-import {getOriginalReportID} from '@libs/ReportUtils';
-import CONST from '@src/CONST';
-import ONYXKEYS from '@src/ONYXKEYS';
-import type * as OnyxTypes from '@src/types/onyx';
-import type ReportAction from '@src/types/onyx/ReportAction';
-import {deleteReport} from './Report';
-
-type IgnoreDirection = 'parent' | 'child';
-
-let allReportActions: OnyxCollection<OnyxTypes.ReportActions>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.REPORT_ACTIONS,
-    waitForCollectionCallback: true,
-    callback: (value) => (allReportActions = value),
-});
-
-let allReports: OnyxCollection<OnyxTypes.Report>;
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.REPORT,
-    waitForCollectionCallback: true,
-    callback: (value) => {
-        allReports = value;
-    },
-});
-
-function clearReportActionErrors(reportID: string, reportAction: ReportAction, originalReportID: string | undefined, keys?: string[]) {
-    if (!reportAction?.reportActionID) {
-        return;
-    }
-
-    if (reportAction.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.ADD || reportAction.isOptimisticAction) {
-        // If there's a linked transaction, delete that too
-        const linkedTransactionID = getLinkedTransactionID(reportAction);
-        if (linkedTransactionID) {
-            Onyx.set(`${ONYXKEYS.COLLECTION.TRANSACTION}${linkedTransactionID}`, null);
-            Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${reportAction.childReportID}`, null);
-        }
-
-        // Delete the optimistic action
-        Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${originalReportID}`, {
-            [reportAction.reportActionID]: null,
-        });
-
-        // Delete the failed task report too
-        const taskReportID = getReportActionMessage(reportAction)?.taskReportID;
-        if (taskReportID && isCreatedTaskReportAction(reportAction)) {
-            deleteReport(taskReportID);
-        }
-        return;
-    }
-
-    if (keys) {
-        const errors: Record<string, null> = {};
-
-        for (const key of keys) {
-            errors[key] = null;
-        }
-
-        Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${originalReportID}`, {
-            [reportAction.reportActionID]: {
-                errors,
-            },
-        });
-        return;
-    }
-    Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${originalReportID}`, {
-        [reportAction.reportActionID]: {
-            errors: null,
-        },
-    });
+import * as API from '@libs/API';
+    return reportAction?.message?.[0]?.text ?? '';
 }
 
 /**
- *
-ignore: `undefined` means we want to check both parent and children report actions
-ignore: `parent` or `child` means we want to ignore checking parent or child report actions because they've been previously checked
+ * Memoized version of getMostRecentReportActionLastMessage to prevent
+ * unnecessary re-computations that cause UI re-renders
  */
-function clearAllRelatedReportActionErrors(
-    reportID: string | undefined,
-    reportAction: ReportAction | null | undefined,
-    originalReportID: string | undefined,
-    ignore?: IgnoreDirection,
-    keys?: string[],
-) {
-    const errorKeys = keys ?? Object.keys(reportAction?.errors ?? {});
-    if (!reportAction || errorKeys.length === 0 || !reportID) {
-        return;
-    }
+const getMostRecentReportActionLastMessageMemoized = lodashMemoize(
+    getMostRecentReportActionLastMessage,
+    (reportID) => reportID
+);
 
-    clearReportActionErrors(reportID, reportAction, originalReportID, keys);
-
-    const report = allReports?.[`${ONYXKEYS.COLLECTION.REPORT}${reportID}`];
-    if (report?.parentReportID && report?.parentReportActionID && ignore !== 'parent') {
-        const parentReportAction = getReportAction(report.parentReportID, report.parentReportActionID);
-        const parentErrorKeys = Object.keys(parentReportAction?.errors ?? {}).filter((err) => errorKeys.includes(err));
-        const parentReportActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`] ?? {};
-        const parentOriginalReportID = getOriginalReportID(report.parentReportID, parentReportAction, parentReportActions);
-
-        clearAllRelatedReportActionErrors(report.parentReportID, parentReportAction, parentOriginalReportID, 'child', parentErrorKeys);
-    }
-
-    if (reportAction.childReportID && ignore !== 'child') {
-        const childActions = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${reportAction.childReportID}`] ?? {};
-        for (const action of Object.values(childActions)) {
-            const childErrorKeys = Object.keys(action.errors ?? {}).filter((err) => errorKeys.includes(err));
-            const childOriginalReportID = getOriginalReportID(reportAction.childReportID, action, childActions);
-            clearAllRelatedReportActionErrors(reportAction.childReportID, action, childOriginalReportID, 'parent', childErrorKeys);
-        }
-    }
-}
-
-export type {IgnoreDirection};
-export {
-    // eslint-disable-next-line import/prefer-default-export
-    clearAllRelatedReportActionErrors,
-};
+/**
+ * Gets the report action with the given reportActionID from the given report.
+ */
