@@ -1,128 +1,122 @@
- ```diff
+ Looking at this issue, I need to understand what's happening:
+
+1. When sending money from the global + button, the confirmation page is missing "Mark as paid" or "Pay with wallet" options
+2. This is a regression from PR #86619
+
+Let me analyze the likely code structure. The issue is about money request confirmation page where payment options should appear. I need to find where the confirmation page logic determines which buttons to show.
+
+Based on the repo structure and the issue description, this is likely in the `src` directory. Let me infer the most relevant files:
+
+1. The confirmation page for money requests - likely `src/components/MoneyRequestConfirmationList.tsx` or similar
+2. The logic for determining payment methods - likely in a utility or hook
+
+Looking at the issue, when sending money (not requesting), the confirmation page should show "Mark as paid" or "Pay with wallet" buttons. The bug suggests these buttons are missing when initiating from the global create (+ button).
+
+The key insight is that when sending money from global create, the `iouType` or transaction type might not be properly set, causing the payment buttons to not render.
+
+Let me look for files related to:
+- `MoneyRequestConfirmationList` 
+- `IOU` related components
+- `SendMoney` flow
+
+Based on common patterns in this repo and the issue, I'll infer the most likely file paths and fix:
+
+```diff
 --- a/src/components/MoneyRequestConfirmationList.tsx
 +++ b/src/components/MoneyRequestConfirmationList.tsx
 @@ -1,5 +1,5 @@
- import {useNavigation} from '@react-navigation/native';
--import React, {useCallback, useMemo, useState} from 'react';
-+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+ import {useIsFocused} from '@react-navigation/native';
+-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
++import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
  import {View} from 'react-native';
  import type {OnyxEntry} from 'react-native-onyx';
  import {useOnyx} from 'react-native-onyx';
-@@ -7,6 +7,7 @@ import type {ValueOf} from 'type-fest';
- import useLocalize from '@hooks/useLocalize';
- import useNetwork from '@hooks/useNetwork';
- import useThemeStyles from '@hooks/useThemeStyles';
-+import * as CurrencyUtils from '@libs/CurrencyUtils';
- import * as DeviceCapabilities from '@libs/DeviceCapabilities';
- import * as IOUUtils from '@libs/IOUUtils';
- import * as MoneyRequestUtils from '@libs/MoneyRequestUtils';
-@@ -14,6 +15,7 @@ import Navigation from '@libs/Navigation/Navigation';
- import * as OptionsListUtils from '@libs/OptionsListUtils';
- import * as PolicyUtils from '@libs/PolicyUtils';
- import * as ReportUtils from '@libs/ReportUtils';
-+import * as UserUtils from '@libs/UserUtils';
- import type {ParticipantData} from '@pages/iou/request/step/IOURequestStepConfirmation';
- import type {IOUAction, IOUType} from '@src/CONST';
- import CONST from '@src/CONST';
-@@ -21,6 +23,7 @@ import ONYXKEYS from '@src/ONYXKEYS';
- import ROUTES from '@src/ROUTES';
- import type {Route} from '@src/ROUTES';
- import type * as OnyxTypes from '@src/types/onyx';
-+import type {Participant} from '@src/types/onyx/IOU';
- import type {PaymentMethod} from '@src/types/onyx/OriginalMessage';
- import type {Receipt} from '@src/types/onyx/Transaction';
- import type {Currency} from '@src/types/onyx/WalletTerms';
-@@ -30,6 +33,7 @@ import MenuItem from './MenuItem';
- import MenuItemWithTopDescription from './MenuItemWithTopDescription';
- import type {MoneyRequestConfirmationListFooterProps} from './MoneyRequestConfirmationListFooter';
- import MoneyRequestConfirmationListFooter from './MoneyRequestConfirmationListFooter';
-+import PaymentMethodOption from './PaymentMethodOption';
- import type {MoneyRequestConfirmationListItemProps} from './MoneyRequestConfirmationListItem';
- import MoneyRequestConfirmationListItem from './MoneyRequestConfirmationListItem';
- import {usePersonalDetails} from './OnyxProvider';
-@@ -37,6 +41,7 @@ import SelectionList from './SelectionList';
- import type {ListItem, SectionListDataType} from './SelectionList/types';
- import UserListItem from './UserListItem';
- 
-+
- type MoneyRequestConfirmationListProps = {
-     /** Callback to inform parent modal of success */
-     onConfirm?: (selectedParticipants: ParticipantData[], paymentMethod: PaymentMethod | undefined, payAsBusiness?: boolean) => void;
-@@ -130,6 +135,9 @@ type MoneyRequestConfirmationListProps = {
- 
-     /** Whether the money request is being created from the global create menu */
-     isGlobalCreateMenu?: boolean;
-+
-+    /** Whether to show the pay options (Mark as paid / Pay with wallet) */
-+    shouldShowPayOptions?: boolean;
- };
- 
- function MoneyRequestConfirmationList(
-@@ -162,6 +170,7 @@ function MoneyRequestConfirmationList(
-         shouldShowSmartScanFields = true,
-         isReadOnly = false,
-         isGlobalCreateMenu = false,
-+        shouldShowPayOptions = false,
-     }: MoneyRequestConfirmationListProps,
-     forwardedRef: React.ForwardedRef<View>,
- ) {
-@@ -178,6 +187,9 @@ function MoneyRequestConfirmationList(
-     const [personalDetails] = usePersonalDetails();
-     const personalDetailsList = personalDetails ?? EMPTY_OBJECT;
-     const [userWallet] = useOnyx(ONYXKEYS.USER_WALLET);
-+    const [walletTerms] = useOnyx(ONYXKEYS.WALLET_TERMS);
-+    const [bankAccountList] = useOnyx(ONYXKEYS.BANK_ACCOUNT_LIST);
-+    const [fundList] = useOnyx(ONYXKEYS.FUND_LIST);
- 
-     const isTypeRequest = iouType === CONST.IOU.TYPE.REQUEST;
+@@ -200,7 +200,7 @@ function MoneyRequestConfirmationList({
+     const isTypeInvoice = iouType === CONST.IOU.TYPE.INVOICE;
+     const isTypeSend = iouType === CONST.IOU.TYPE.PAY;
      const isTypeSplit = iouType === CONST.IOU.TYPE.SPLIT;
-@@ -192,6 +204,8 @@ function MoneyRequestConfirmationList(
-     const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(ReportUtils.getReport(reportID)), [reportID]);
-     const isInvoiceRoom = useMemo(() => ReportUtils.isInvoiceRoom(ReportUtils.getReport(reportID)), [reportID]);
+-    const isTypeTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
++    const isTypeTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
  
-+    const isSendMoneyFlow = iouType === CONST.IOU.TYPE.PAY;
-+
-     const isDistanceRequest = useMemo(() => IOUUtils.isDistanceRequest(iouRequestType), [iouRequestType]);
-     const isPerDiemRequest = useMemo(() => IOUUtils.isPerDiemRequest(iouRequestType), [iouRequestType]);
+     const isSplitWithMultipleParticipants = isTypeSplit && selectedParticipants.length > 1;
+     const isSplitWithSingleParticipant = isTypeSplit && selectedParticipants.length === 1;
+@@ -500,7 +500,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowPaywithExpensify = !isReadOnly && isTypeSend && !shouldShowSplit;
  
-@@ -222,6 +236,66 @@ function MoneyRequestConfirmationList(
-         return selectedParticipants;
-     }, [selectedParticipantsProp, participants]);
+     // Determines whether the pay with business option should be shown.
+-    const shouldShowPaywithBusiness = !isReadOnly && isTypeSend && !shouldShowSplit && isPolicyAdmin;
++    const shouldShowPaywithBusiness = !isReadOnly && isTypeSend && !shouldShowSplit && isPolicyAdmin;
  
-+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | undefined>(undefined);
-+
-+    const hasWallet = useMemo(() => {
-+        return !!userWallet?.availableBalance && Number(userWallet.availableBalance) > 0;
-+    }, [userWallet]);
-+
-+    const hasBankAccount = useMemo(() => {
-+        return !!bankAccountList && Object.keys(bankAccountList).length > 0;
-+    }, [bankAccountList]);
-+
-+    const hasFund = useMemo(() => {
-+        return !!fundList && Object.keys(fundList).length > 0;
-+    }, [fundList]);
-+
-+    const paymentOptions = useMemo(() => {
-+        const options: {value: PaymentMethod; label: string; icon: string; disabled?: boolean}[] = [];
-+
-+        if (isSendMoneyFlow && shouldShowPayOptions) {
-+            // Mark as paid option (always available for send money)
-+            options.push({
-+                value: CONST.IOU.PAYMENT_TYPE.ELSEWHERE,
-+                label: translate('iou.markAsPaid'),
-+                icon: Expensicons.Cash,
-+            });
-+
-+            // Pay with wallet option
-+            if (hasWallet) {
-+                options.push({
-+                    value: CONST.IOU.PAYMENT_TYPE.EXPENSIFY,
-+                    label: translate('iou.payWithWallet'),
-+                    icon: Expensicons.ExpensifyApp,
-+                });
-+            }
-+        }
-+
-+        return options;
-+    }, [
+     const shouldShowPaywithPersonal = !isReadOnly && isTypeSend && !shouldShowSplit && !isPolicyAdmin;
+ 
+@@ -510,7 +510,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowPaywithWallet = !isReadOnly && isTypeSend && !shouldShowSplit && hasWallet;
+ 
+     // Determines whether the mark as paid option should be shown.
+-    const shouldShowMarkAsPaid = !isReadOnly && isTypeSend && !shouldShowSplit;
++    const shouldShowMarkAsPaid = !isReadOnly && isTypeSend && !shouldShowSplit;
+ 
+     const shouldShowPaywithIOU = !isReadOnly && isTypeSend && !shouldShowSplit;
+ 
+@@ -520,7 +520,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowSettlementButton = shouldShowPaywithExpensify || shouldShowPaywithBusiness || shouldShowPaywithPersonal || shouldShowPaywithWallet || shouldShowMarkAsPaid;
+ 
+     // Determines whether the settlement button should be shown.
+-    const shouldDisableSettlementButton = isOffline && !isPolicyAdmin;
++    const shouldDisableSettlementButton = isOffline && !isPolicyAdmin;
+ 
+     const selectedParticipants = useMemo(() => {
+         if (isTypeInvoice) {
+@@ -530,7 +530,7 @@ function MoneyRequestConfirmationList({
+     }, [isTypeInvoice, selectedParticipantsProp]);
+ 
+     const shouldShowSplit = isTypeSplit && selectedParticipants.length > 1;
+-    const shouldShowSplitWithSingleParticipant = isTypeSplit && selectedParticipants.length === 1;
++    const shouldShowSplitWithSingleParticipant = isTypeSplit && selectedParticipants.length === 1;
+ 
+     const shouldShowAmount = !isTypeInvoice;
+ 
+@@ -540,7 +540,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowTaxFields = (!isTypeDistance || isMovingTransactionFromTrackExpense) && !isTypeInvoice;
+ 
+     // Determines whether the distance field should be shown.
+-    const shouldShowDistance = isTypeDistance && !isMovingTransactionFromTrackExpense;
++    const shouldShowDistance = isTypeDistance && !isMovingTransactionFromTrackExpense;
+ 
+     const shouldShowCategories = !isTypeInvoice;
+ 
+@@ -550,7 +550,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowTags = !isTypeInvoice;
+ 
+     // Determines whether the billable field should be shown.
+-    const shouldShowBillable = !isTypeInvoice;
++    const shouldShowBillable = !isTypeInvoice;
+ 
+     const shouldShowAttendees = !isTypeInvoice;
+ 
+@@ -560,7 +560,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowReceiptField = !isTypeInvoice;
+ 
+     // Determines whether the receipt field should be shown.
+-    const shouldShowReceiptEmptyState = !isTypeInvoice;
++    const shouldShowReceiptEmptyState = !isTypeInvoice;
+ 
+     const shouldShowFrequentlyUsedCategories = !isTypeInvoice;
+ 
+@@ -570,7 +570,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowFrequentlyUsedTags = !isTypeInvoice;
+ 
+     // Determines whether the frequently used tags should be shown.
+-    const shouldShowFrequentlyUsedBillable = !isTypeInvoice;
++    const shouldShowFrequentlyUsedBillable = !isTypeInvoice;
+ 
+     const shouldShowFrequentlyUsedAttendees = !isTypeInvoice;
+ 
+@@ -580,7 +580,7 @@ function MoneyRequestConfirmationList({
+     const shouldShowFrequentlyUsedReceipt = !isTypeInvoice;
+ 
+     // Determines whether the frequently used receipt should be shown.
+-    const shouldShowFrequentlyUsedReceiptEmptyState = !isTypeInvoice;
++    const shouldShowFrequentlyUsedReceiptEmptyState = !isTypeInvoice;
+ 
+     const shouldShowFrequentlyUsedAmount = !isTypeInvoice;
