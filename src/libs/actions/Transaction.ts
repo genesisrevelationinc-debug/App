@@ -1,19 +1,19 @@
 import Onyx from 'react-native-onyx';
 import type {OnyxUpdate} from 'react-native-onyx';
+import type {ValueOf} from 'type-fest';
+import {applyAllExpenseRules} from '@libs/TransactionUtils';
 import * as API from '@libs/API';
-import * as ExpenseRules from '@libs/ExpenseRules';
-import type {ApplyWorkspaceExpenseRulesParams} from '@libs/API/parameters';
+import type {ApplyWorkspaceExpenseRulesParams, CreateTransactionParams, DeleteTransactionParams, UpdateTransactionParams} from '@libs/API/parameters';
 import {READ_COMMANDS, WRITE_COMMANDS} from '@libs/API/types';
-import * as CollectionUtils from '@libs/CollectionUtils';
     ChangeTransactionsReportParams,
     DismissViolationParams,
-    GetDuplicateTransactionDetailsParams,
-    GetRouteParams,
-    MarkAsCashParams,
-    TransactionThreadInfo,
-} from '@libs/API/parameters';
-import {READ_COMMANDS, WRITE_COMMANDS} from '@libs/API/types';
-import * as CollectionUtils from '@libs/CollectionUtils';
+import CONST from '@src/CONST';
+import ONYXKEYS from '@src/ONYXKEYS';
+import type {Transaction} from '@src/types/onyx';
+import type {Transaction as TransactionType} from '@src/types/onyx';
+
+type CreateTransactionActionParams = {
+    reportID: string;
 import {getCurrencySymbol} from '@libs/CurrencyUtils';
 import DateUtils from '@libs/DateUtils';
 import DistanceRequestUtils from '@libs/DistanceRequestUtils';
@@ -71,44 +71,40 @@ import type {
     PolicyCategories,
     PolicyTagLists,
     RecentWaypoint,
-    Report,
-    ReportAction,
-    ReportNextStepDeprecated,
-    ReviewDuplicates,
-    Transaction,
-    TransactionViolation,
+    createdTransaction: Transaction,
+    data: CreateTransactionActionParams,
+    onyxData?: OnyxUpdate[],
+    shouldApplyExpenseRules = false,
+) {
+    const optimisticData: OnyxUpdate[] = onyxData ?? [];
+
     TransactionViolations,
 } from '@src/types/onyx';
 import type {OriginalMessageIOU, OriginalMessageModifiedExpense} from '@src/types/onyx/OriginalMessage';
 import type {OnyxData} from '@src/types/onyx/Request';
-import type {SearchDataTypes} from '@src/types/onyx/SearchResults';
-import type {Waypoint, WaypointCollection} from '@src/types/onyx/Transaction';
-import type TransactionState from '@src/types/utils/TransactionStateType';
+        },
+    });
 
-let allReports: OnyxCollection<Report> = {};
-Onyx.connect({
+    // Apply workspace expense rules to imported transactions (e.g., company card/bank feed)
+    if (shouldApplyExpenseRules) {
+        const transactionWithRules = applyAllExpenseRules(createdTransaction);
+        Object.assign(createdTransaction, transactionWithRules);
+    }
+
+    return createdTransaction;
+}
+
     key: ONYXKEYS.COLLECTION.REPORT,
     waitForCollectionCallback: true,
     callback: (value) => {
         if (!value) {
-            return;
-        }
-        allReports = value;
-    },
-});
-
-const allTransactionViolation: OnyxCollection<TransactionViolation[]> = {};
-Onyx.connect({
-    key: ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS,
-    callback: (transactionViolation, key) => {
-        if (!key || !transactionViolation) {
-            return;
-        }
-        const transactionID = CollectionUtils.extractCollectionItemID(key);
-        allTransactionViolation[transactionID] = transactionViolation;
-    },
-});
-
+function createImportedTransaction(
+    transaction: Transaction,
+    reportID: string,
+    shouldApplyExpenseRules = true,
+): Transaction {
+    const createdTransaction = TransactionUtils.buildOptimisticTransaction({
+        amount: transaction.amount,
 let allTransactionViolations: TransactionViolations = [];
 Onyx.connect({
     key: ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS,
@@ -121,20 +117,17 @@ type SaveWaypointProps = {
     waypoint: RecentWaypoint | null;
     isDraft?: boolean;
     recentWaypointsList?: RecentWaypoint[];
-        value: transaction,
-    });
+    isSplitDraftTransaction?: boolean;
+};
 
-    // Apply workspace expense rules to the newly scraped transaction
-    ExpenseRules.applyAllExpenseRules(transactionID);
+function saveWaypoint({transactionID, index, waypoint, isDraft = false, recentWaypointsList = [], isSplitDraftTransaction = false}: SaveWaypointProps) {
+        reportID,
+    };
 
-    return transactionID;
+    return createTransaction(createdTransaction, data, undefined, shouldApplyExpenseRules);
 }
 
-        key = `${ONYXKEYS.COLLECTION.TRANSACTION_DRAFT}${transactionID}`;
-    } else if (isSplitDraftTransaction) {
-        key = `${ONYXKEYS.COLLECTION.SPLIT_TRANSACTION_DRAFT}${transactionID}`;
-    }
-    // Saving a waypoint should completely overwrite the existing one at the given index (if any).
+function updateTransaction(
     // Onyx merge performs noop on undefined fields. Thus we should fallback to null so the existing fields are cleared.
     const waypointOnyxUpdate: Required<NullishDeep<RecentWaypoint>> | null = waypoint
         ? {
@@ -168,15 +161,12 @@ type SaveWaypointProps = {
         routes: {
             route0: {
                 // Clear the existing distance to recalculate next time
-        key: `${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}`,
-        value: updatedTransaction,
-    });
-
-    // Apply workspace expense rules to the updated scraped transaction
-    ExpenseRules.applyAllExpenseRules(transactionID);
-}
-
-/**
+                distance: null,
+                geometry: {
+                    coordinates: null,
+                },
+            },
+        },
     });
 
     // If current location is used, we would want to avoid saving it as a recent waypoint. This prevents the 'Your Location'
@@ -498,6 +488,10 @@ type DismissDuplicateTransactionViolationProps = {
     policy: OnyxEntry<Policy>;
     isASAPSubmitBetaEnabled: boolean;
     allTransactions: OnyxCollection<Transaction>;
+    currentTransactionViolations?: Array<{
+        transactionID: string;
+        violations: TransactionViolations;
+    }>;
 };
 
 /**
@@ -511,8 +505,8 @@ function dismissDuplicateTransactionViolation({
     policy,
     isASAPSubmitBetaEnabled,
     allTransactions,
+    currentTransactionViolations = [],
 }: DismissDuplicateTransactionViolationProps) {
-    const currentTransactionViolations = transactionIDs.map((id) => ({transactionID: id, violations: allTransactionViolation?.[id] ?? []}));
     const currentTransactions = transactionIDs.map((id) => allTransactions?.[`${ONYXKEYS.COLLECTION.TRANSACTION}${id}`]);
     const transactionsReportActions = currentTransactions.map((transaction) => getIOUActionForReportID(transaction?.reportID, transaction?.transactionID));
     const optimisticDismissedViolationReportActions = transactionsReportActions.map(() => {
@@ -854,6 +848,7 @@ type ChangeTransactionsReportProps = {
     policyCategories?: OnyxEntry<PolicyCategories>;
     allTransactions: OnyxCollection<Transaction>;
     policyTagList: OnyxEntry<PolicyTagLists>;
+    allTransactionViolation?: OnyxCollection<TransactionViolation[]>;
 };
 
 function changeTransactionsReport({
@@ -867,6 +862,7 @@ function changeTransactionsReport({
     policyCategories,
     allTransactions,
     policyTagList,
+    allTransactionViolation = {},
 }: ChangeTransactionsReportProps) {
     const reportID = newReport?.reportID ?? CONST.REPORT.UNREPORTED_REPORT_ID;
 
@@ -883,7 +879,7 @@ function changeTransactionsReport({
     // Store current violations for each transaction to restore on failure
     const currentTransactionViolations: Record<string, TransactionViolation[]> = {};
     for (const id of transactionIDs) {
-        currentTransactionViolations[id] = allTransactionViolation?.[id] ?? [];
+        currentTransactionViolations[id] = allTransactionViolation?.[`${ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS}${id}`] ?? [];
     }
 
     const optimisticData: Array<
@@ -1277,20 +1273,21 @@ function changeTransactionsReport({
         let transactionReimbursable = transaction.reimbursable;
         // 2. Calculate transaction violations if moving transaction to a workspace
         if (isPaidGroupPolicy(policy) && policy?.id) {
-            const violationData = ViolationsUtils.getViolationsOnyxData(
-                transactionForViolations,
-                currentTransactionViolations[transaction.transactionID] ?? [],
+            const violationData = ViolationsUtils.getViolationsOnyxData({
+                updatedTransaction: transactionForViolations,
+                transactionViolations: currentTransactionViolations[transaction.transactionID] ?? [],
                 policy,
-                policyTagList ?? {},
-                policyCategories ?? {},
-                policyHasDependentTags,
-                false,
-            );
+                policyTagList: policyTagList ?? {},
+                policyCategories: policyCategories ?? {},
+                hasDependentTags: policyHasDependentTags,
+                isInvoiceTransaction: false,
+                shouldRemoveRejectedExpenseViolation: true,
+            });
             optimisticData.push(violationData);
             failureData.push({
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS}${transaction.transactionID}`,
-                value: allTransactionViolation?.[transaction.transactionID] ?? null,
+                value: allTransactionViolation?.[`${ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS}${transaction.transactionID}`] ?? null,
             });
             if (Array.isArray(violationData.value) && hasSubmissionBlockingViolationInList(violationData.value)) {
                 shouldFixViolations = true;
@@ -1675,15 +1672,15 @@ function changeTransactionsReport({
         if (!isPaidGroupPolicy(policy) || !policy?.id) {
             continue;
         }
-        const violationData = ViolationsUtils.getViolationsOnyxData(
-            transaction,
-            currentTransactionViolations[transaction.transactionID] ?? [],
+        const violationData = ViolationsUtils.getViolationsOnyxData({
+            updatedTransaction: transaction,
+            transactionViolations: currentTransactionViolations[transaction.transactionID] ?? [],
             policy,
-            policyTagList ?? {},
-            policyCategories ?? {},
-            policyHasDependentTags,
-            false,
-        );
+            policyTagList: policyTagList ?? {},
+            policyCategories: policyCategories ?? {},
+            hasDependentTags: policyHasDependentTags,
+            isInvoiceTransaction: false,
+        });
         if (Array.isArray(violationData.value) && hasSubmissionBlockingViolationInList(violationData.value)) {
             shouldFixViolations = true;
         }
@@ -1823,6 +1820,10 @@ function changeTransactionsReport({
     });
 }
 
+function getDefaultP2PMileageRate() {
+    API.read(READ_COMMANDS.GET_DEFAULT_P2P_MILEAGE_RATE, null);
+}
+
 function mergeTransactionIdsHighlightOnSearchRoute(type: SearchDataTypes, data: Record<string, boolean> | null) {
     return Onyx.merge(ONYXKEYS.TRANSACTION_IDS_HIGHLIGHT_ON_SEARCH_ROUTE, {[type]: data});
 }
@@ -1858,6 +1859,7 @@ export {
     revert,
     changeTransactionsReport,
     setTransactionReport,
+    getDefaultP2PMileageRate,
     mergeTransactionIdsHighlightOnSearchRoute,
     getDuplicateTransactionDetails,
 };
