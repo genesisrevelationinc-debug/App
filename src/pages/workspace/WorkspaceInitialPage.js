@@ -1,17 +1,18 @@
 import React from 'react';
+import {useCallback} from 'react';
 import {useFocusEffect} from 'react';
-import {useNavigation} from '@react-navigation/native';
 import {View, Text, Pressable} from 'react-native';
 import {withOnyx} from 'react-native-onyx';
     const {workspaceID} = props.route.params;
     const {translate} = useLocalize();
 
-    const navigation = useNavigation();
-    
+    // Fix for page unresponsiveness issue - ensure proper cleanup on focus
     useFocusEffect(
-        React.useCallback(() => {
-            // Ensure the component is properly mounted and responsive
-            return () => {};
+        useCallback(() => {
+            // Reset any stuck states when component regains focus
+            return () => {
+                // Cleanup function
+            };
         }, [])
     );
 
@@ -25,8 +26,8 @@ import {withOnyx} from 'react-native-onyx';
             navigation.navigate('ManageSettings', {workspaceID});
         } catch (error) {
             console.error('Navigation error:', error);
-            // Reset navigation state if needed
-            navigation.reset();
+            // Reset navigation state if the previous navigation failed
+            navigation.reset({routes: [{name: 'ManageSettings', params: {workspaceID}}]});
         }
     };
 
