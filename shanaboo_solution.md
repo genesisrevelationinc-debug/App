@@ -1,4 +1,4 @@
-```diff
+ ```diff
 --- a/src/pages/home/ReportScreen.tsx
 +++ b/src/pages/home/ReportScreen.tsx
 @@ -1,5 +1,5 @@
@@ -8,115 +8,134 @@
  import {useOnyx} from 'react-native-onyx';
  import type {OnyxEntry} from 'react-native-onyx';
  import type {ValueOf} from 'type-fest';
-@@ -123,6 +123,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
-     const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP);
-     const [isComposerFullScreen] = useOnyx(ONYXKEYS.IS_COMPOSER_FULL_SCREEN);
-     const [shouldShowBanner, setShouldShowBanner] = useState(false);
+@@ -200,6 +200,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+     const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP, {initialValue: true});
+     const [isSidebarLoading] = useOnyx(ONYXKEYS.IS_SIDEBAR_LOADED, {initialValue: false});
+     const [reportActionsMap] = useOnyx(ONYXKEYS.MAP_ONYX_TO_STORAGE, {initialValue: {}});
 +    const [isReportReadyForScroll, setIsReportReadyForScroll] = useState(false);
  
-     const reportIDFromRoute = route.params?.reportID;
-     const reportActionIDFromRoute = route.params?.reportActionID;
-@@ -131,6 +132,12 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
-     const prevReportActionIDFromRoute = usePrevious(reportActionIDFromRoute);
-     const prevReportID = usePrevious(reportID);
+     const reportIDFromRoute = route.params?.reportID ?? '-1';
+     const reportActionIDFromRoute = route.params?.reportActionID ?? '-1';
+@@ -520,6 +521,13 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         }
+     }, [reportActionIDFromRoute, reportIDFromRoute]);
  
-+    useLayoutEffect(() => {
-+        if (reportID && !isReportReadyForScroll) {
++    // Mark report as ready for scroll after initial load
++    useEffect(() => {
++        if (!isReportReadyForScroll && !isLoadingApp && !isSidebarLoading && reportIDFromRoute !== '-1') {
 +            setIsReportReadyForScroll(true);
 +        }
-+    }, [reportID, isReportReadyForScroll]);
++    }, [isLoadingApp, isSidebarLoading, reportIDFromRoute, isReportReadyForScroll]);
 +
-     const [modal] = useOnyx(ONYXKEYS.MODAL);
-     const isSidebarScreenFocused = useIsFocused();
+     const fetchReport = useCallback(() => {
+         if (!reportIDFromRoute || reportIDFromRoute === '-1') {
+             return;
+@@ -570,6 +578,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute === '-1') {
+             return;
+         }
++
+         // After loading the app and opening the report, we want to scroll to the linked report action
+         // But we only want to do this once, so we use a ref to track if we've already scrolled
+         if (hasScrolledToReportAction.current) {
+@@ -577,6 +586,11 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         }
+         hasScrolledToReportAction.current = true;
  
-@@ -556,6 +563,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
-                                     reportActions={reportActions}
-                                     report={report}
-                                     reportID={reportID}
-+                                    isReportReadyForScroll={isReportReadyForScroll}
-                                 />
-                             )}
-                             <ReportFooter
---- a/src/pages/home/report/ReportActionsView.tsx
-+++ b/src/pages/home/report/ReportActionsView.tsx
-@@ -1,5 +1,5 @@
- import {isEmpty} from 'lodash';
--import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-+import React, {useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect} from 'react';
- import {InteractionManager, View} from 'react-native';
- import type {OnyxEntry} from 'react-native-onyx';
- import {useOnyx} from 'react-native-onyx';
-@@ -53,6 +53,7 @@ type ReportActionsViewProps = {
-     report: OnyxEntry<Report>;
-     reportActions: ReportActionsArray;
-     reportID: string;
-+    isReportReadyForScroll?: boolean;
- };
- 
- type ReportActionKey = string;
-@@ -61,7 +62,7 @@ const emptyArray: ReportActionsArray = [];
- 
- const reportActionSizeCache = new Map<ReportActionKey, number>();
- 
--function ReportActionsView({reportActions: reportActionsFromProps, report, reportID}: ReportActionsViewProps) {
-+function ReportActionsView({reportActions: reportActionsFromProps, report, reportID, isReportReadyForScroll}: ReportActionsViewProps) {
-     const reportActions = useMemo(() => {
-         if (isEmpty(reportActionsFromProps)) {
-             return emptyArray;
-@@ -98,6 +99,7 @@ function ReportActionsView({reportActions: reportActionsFromProps, report, report
-     const [isLoadingNewerActions, setIsLoadingNewerActions] = useState(false);
-     const [isLoadingOlderActions, setIsLoadingOlderActions] = useState(false);
-     const [isReadyForCommentLinkScroll, setIsReadyForCommentLinkScroll] = useState(false);
-+    const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
-     const [reportActionID, setReportActionID] = useState(route?.params?.reportActionID);
-     const [isReportFullyVisible, setIsReportFullyVisible] = useState(false);
-     const [isNewerActionsPageLoading, setIsNewerActionsPageLoading] = useState(false);
-@@ -116,6 +118,20 @@ function ReportActionsView({reportActions: reportActionsFromProps, report, report
-     const isFirstLinkedActionReportActionID = reportActionID === linkedReportActionID;
-     const isReportActionIDLinkedAction = reportActionID === linkedReportActionID;
- 
-+    useLayoutEffect(() => {
-+        if (!isReportReadyForScroll || hasScrolledToTarget) {
++        // Wait for report to be ready before attempting scroll
++        if (!isReportReadyForScroll) {
 +            return;
 +        }
 +
-+        if (linkedReportActionID && reportActions.length > 0) {
-+            const linkedAction = reportActions.find((action) => action.reportActionID === linkedReportActionID);
-+            if (linkedAction) {
-+                setHasScrolledToTarget(true);
-+                setIsReadyForCommentLinkScroll(true);
-+            }
-+        }
-+    }, [isReportReadyForScroll, linkedReportActionID, reportActions, hasScrolledToTarget]);
-+
-     const reportActionIDFromRoute = route?.params?.reportActionID;
-     const prevReportActionIDFromRoute = usePrevious(reportActionIDFromRoute);
-     const prevLinkedReportActionID = usePrevious(linkedReportActionID);
-@@ -196,7 +212,7 @@ function ReportActionsView({reportActions: reportActionsFromProps, report, report
-         if (!linkedReportActionID) {
-             return;
-         }
--        if (isFirstLinkedActionReportActionID) {
-+        if (isFirstLinkedActionReportActionID && !hasScrolledToTarget) {
-             setIsReadyForCommentLinkScroll(true);
-         }
-         if (isReportActionIDLinkedAction) {
-@@ -204,7 +220,7 @@ function ReportActionsView({reportActions: reportActionsFromProps, report, report
-         }
-         // We only want to update the state when the component first mounts
-         // eslint-disable-next-line react-hooks/exhaustive-deps
--    }, [linkedReportActionID]);
-+    }, [linkedReportActionID, hasScrolledToTarget]);
+         // Find the report action in the list
+         const reportAction = reportActions.find((action) => action.reportActionID === reportActionIDFromRoute);
  
-     const handleReportActionLink = useCallback(() => {
-         if (!reportActionID) {
-@@ -222,7 +238,7 @@ function ReportActionsView({reportActions: reportActionsFromProps, report, report
-         if (!reportActionID) {
+@@ -596,7 +610,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+                 reportActionID: reportActionIDFromRoute,
+             });
+         }
+-    }, [reportActionIDFromRoute, reportActions, reportIDFromRoute]);
++    }, [reportActionIDFromRoute, reportActions, reportIDFromRoute, isReportReadyForScroll]);
+ 
+     useEffect(() => {
+         scrollToReportAction();
+@@ -606,6 +620,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+     useEffect(() => {
+         if (prevReportActionIDFromRoute !== reportActionIDFromRoute) {
+             hasScrolledToReportAction.current = false;
++            setIsReportReadyForScroll(false);
+         }
+     }, [prevReportActionIDFromRoute, reportActionIDFromRoute]);
+ 
+@@ -614,6 +629,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
              return;
          }
--        if (isFirstLinkedActionReportActionID) {
-+        if (isFirstLinkedActionReportActionID && !hasScrolledToTarget) {
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -635,6 +651,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
              return;
          }
-         if (isReportActionIDLinkedAction) {
-@@ -
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -656,6 +673,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -677,6 +695,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -698,6 +717,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -719,6 +739,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -740,6 +761,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -761,6 +783,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
+@@ -782,6 +805,7 @@ function ReportScreen({route, navigation}: ReportScreenProps) {
+         if (reportActionIDFromRoute !== '-1') {
+             return;
+         }
++
+         // We only want to update the last read action when the user is actively looking at the report
+         if (!isFocused) {
+             return;
