@@ -1,150 +1,119 @@
- ```diff
---- a/src/libs/Navigation/Navigation.ts
-+++ b/src/libs/Navigation/Navigation.ts
-@@ -1,5 +1,6 @@
- import {findFocusedRoute, getStateFromPath} from '@react-navigation/native';
- import type {EventArg, NavigationContainerEventMap, NavigationState, PartialState, StackNavigationState} from '@react-navigation/native';
-+import type {RootStackParamList} from '@navigation/types';
- import {findLastIndex} from 'lodash';
- import {getReportActionHtml} from '@libs/ReportActionsUtils';
- import {shouldUseNarrowLayout} from '@libs/Environment/Environment';
-@@ -20,7 +21,6 @@ import type {
-     NavigationRoot,
-     RootStackParamList,
-     StackNavigationAction,
--    NavigationStateRoute,
- } from './types';
- import SCREENS from './SCREENS';
- import type {Route} from './types';
-@@ -28,6 +28,7 @@ import type {Route} from './types';
- type GoBackAction = StackNavigationAction | NavigationAction;
+ Looking at this issue, I need to understand what's happening:
+
+1. User merges an expense from self-DM into a workspace chat expense
+2. After merge, user is redirected to Self-DM
+3. When user taps Back to return to workspace chat, a "Not Here" page briefly flashes
+
+This is a navigation/routing issue where the workspace chat report is briefly not found during navigation. The "Not Here" flash suggests that when navigating back, the report ID being used is temporarily invalid or the report data hasn't loaded yet.
+
+Let me look for relevant files related to navigation after merge operations and report screen rendering.
+
+Based on the repo structure and the issue, I need to find files related to:
+1. Merge expense flow/navigation
+2. Report screen rendering
+3. "Not Here" / not found page logic
+
+Let me search for relevant files in the src directory structure.
+
+From common patterns in this codebase, the issue likely involves:
+- Navigation after merge completion
+- Report screen checking if a report exists before rendering
+- The "Not Here" page being shown when report data is loading
+
+Let me look at the likely file paths. Based on the issue description mentioning this was fixed from #79416 but with a regression, I need to find where the navigation happens after merge and where the Not Here check happens.
+
+Looking at typical Expensify App structure:
+- `src/pages/ReportPage.js` or similar for report rendering
+- `src/libs/actions/IOU.js` or similar for merge expense actions
+- Navigation utilities
+
+The "Not Here" flash typically happens when `ReportScreen` checks `shouldShowNotFoundPage` and it briefly returns true before report data is loaded.
+
+Let me infer the most likely fix: After merging expenses, when navigating back, the report ID in the URL might be stale or the report data needs to be refreshed. The fix would likely involve either:
+1. Properly updating navigation after merge
+2. Adding a loading state check before showing "Not Here"
+3. Ensuring report data is available before navigation completes
+
+Based on the issue being about a brief flash of "Not Here" when navigating back to workspace chat, the most likely fix is in the ReportScreen component where it determines whether to show the not found page. We need to ensure it doesn't show "Not Here" while report data is still loading after a merge operation.
+
+Let me look for the ReportScreen and related navigation logic. Given the file structure, I'll check for files related to report screens and IOU merge actions.
+
+```diff
+--- a/src/pages/ReportPage.tsx
++++ b/src/pages/ReportPage.tsx
+@@ -1,5 +1,5 @@
+ import {useIsFocused} from '@react-navigation/native';
+-import React, {memo, useCallback, useEffect, useMemo, useRef} from 'react';
++import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+ import {InteractionManager, View} from 'react-native';
+ import type {OnyxEntry} from 'react-native-onyx';
+ import {useOnyx} from 'react-native-onyx';
+@@ -50,6 +50,7 @@ import isLoadingReport from '@libs/isLoadingReport';
+ import Log from '@libs/Log';
+ import Navigation from '@libs/Navigation/Navigation';
+ import type {AuthScreensParamList, RootStackParamList, State} from '@libs/Navigation/types';
++import {navigationRef} from '@libs/Navigation/Navigation';
+ import {isOnboardingFlowName} from '@libs/NavigationUtils';
+ import {buildReportDetailsScreenRoute} from '@libs/NavigationUtils';
+ import * as PolicyUtils from '@libs/PolicyUtils';
+@@ -234,6 +235,9 @@ function ReportPage({route, navigation, routeIndex}: ReportPageProps) {
+     const [account] = useOnyx(ONYXKEYS.ACCOUNT);
+     const [session] = useOnyx(ONYXKEYS.SESSION);
  
- type NavigationActionHandler = (action: NavigationAction, state: NavigationState<RootStackParamList>) => NavigationState<RootStackParamList> | undefined;
-+type NavigationStateRoute = NavigationState<RootStackParamList>['routes'][number];
- 
- // The flag is used to check if we are in the process of navigating. If we are, we should not go back.
- let isNavigating = false;
-@@ -35,6 +36,9 @@ let isNavigating = false;
- // The flag is used to check if we should reset the navigation state. If we should, we should not go back.
- let shouldResetNavigationState = false;
- 
-+// The flag is used to prevent showing "Not Here" page during navigation transitions
-+let isTransitioning = false;
++    // Track if we just came from a merge operation to prevent Not Here flash
++    const [isPostMergeNavigation, setIsPostMergeNavigation] = useState(false);
 +
- // This flag is used to prevent infinite loops in the goBack function. If we are already going back, we should not go back again.
- let isGoingBack = false;
+     const [reportOnyx, reportResult] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportIDFromRoute}`, {
+         selector: (report) => report && report.reportID === reportIDFromRoute ? report : undefined,
+     });
+@@ -258,6 +262,28 @@ function ReportPage({route, navigation, routeIndex}: ReportPageProps) {
+         return reportOnyx;
+     }, [reportOnyx, reportIDFromRoute]);
  
-@@ -42,6 +46,14 @@ let isGoingBack = false;
- let isNavigationStateSaved = false;
- let onBeforeRemoveListener: (() => void) | null = null;
- 
-+export function getIsTransitioning(): boolean {
-+    return isTransitioning;
-+}
++    // Check if we just navigated from a merge operation
++    useEffect(() => {
++        const state = navigationRef.getState();
++        const lastRoute = state?.routes?.[state.routes.length - 2];
++        const currentRoute = state?.routes?.[state.routes.length - 1];
++        
++        // If coming from IOU or merge flow, mark as post-merge navigation
++        if (lastRoute?.name === 'IOU' || lastRoute?.name === 'MoneyRequest' || currentRoute?.params?.fromMerge) {
++            setIsPostMergeNavigation(true);
++            // Clear the flag after a short delay to allow report to load
++            const timer = setTimeout(() => {
++                setIsPostMergeNavigation(false);
++            }, 500);
++            return () => clearTimeout(timer);
++        }
++    }, []);
 +
-+export function setIsTransitioning(value: boolean): void {
-+    isTransitioning = value;
-+}
-+
- function setShouldResetNavigationState(value: boolean) {
-     shouldResetNavigationState = value;
- }
-@@ -50,6 +62,10 @@ function getShouldResetNavigationState(): boolean {
-     return shouldResetNavigationState;
- }
+     const reportID = report?.reportID ?? '-1';
+     const isReportAvailableInOnyx = useMemo(() => report?.reportID !== undefined, [report]);
+     const reportActionIDFromRoute = route.params?.reportActionID ?? '-1';
+@@ -412,7 +440,8 @@ function ReportPage({route, navigation, routeIndex}: ReportPageProps) {
+         // - Onyx had an error loading the report data
+         // - The report is not in an open, archived, or settled state
+         // - The report is a transaction thread associated with an expense but the user cannot see it
+-        if (!isLoadingReportOnyx && !reportIDFromRoute) {
++        // - But don't show Not Here briefly after merge navigation while report loads
++        if (!isPostMergeNavigation && !isLoadingReportOnyx && !reportIDFromRoute) {
+             return true;
+         }
  
-+function getIsNavigating(): boolean {
-+    return isNavigating;
-+}
-+
- function canGoBack(): boolean {
-     const navigation = navigationRef.current;
-     if (!navigation) {
-@@ -58,10 +74,6 @@ function canGoBack(): boolean {
-     return navigation.canGoBack();
- }
+@@ -421,7 +450,7 @@ function ReportPage({route, navigation, routeIndex}: ReportPageProps) {
+             return true;
+         }
  
--function getIsNavigating(): boolean {
--    return isNavigating;
--}
--
- function setIsNavigating(value: boolean) {
-     isNavigating = value;
- }
-@@ -70,6 +82,10 @@ function getIsGoingBack(): boolean {
-     return isGoingBack;
- }
+-        if (!isLoadingReportOnyx && !reportID) {
++        if (!isPostMergeNavigation && !isLoadingReportOnyx && !reportID) {
+             return true;
+         }
  
-+function setIsGoingBack(value: boolean): void {
-+    isGoingBack = value;
-+}
-+
- function getActiveRouteIndex(state: NavigationState<RootStackParamList>, index: number): number {
-     const currentState = state.routes.at(index);
-     if (!currentState) {
-@@ -82,10 +98,6 @@ function getActiveRouteIndex(state: NavigationState<RootStackParamList>, index:
-     return getActiveRouteIndex(currentState.state, currentState.state.index);
- }
+@@ -445,6 +474,7 @@ function ReportPage({route, navigation, routeIndex}: ReportPageProps) {
+         isLinkedReportActionDeleted,
+         isLoadingReportOnyx,
+         isReportAvailableInOnyx,
++        isPostMergeNavigation,
+     ]);
  
--function setIsGoingBack(value: boolean) {
--    isGoingBack = value;
--}
--
- function getActiveRouteWithoutParams(state: NavigationState<RootStackParamList> | NavigationStateRoute | PartialState<NavigationState<RootStackParamList>> | undefined): string {
-     if (!state) {
-         return '';
-@@ -97,7 +109,7 @@ function getActiveRouteWithoutParams(state: NavigationState<RootStackParamList> |
-     return getActiveRouteWithoutParams(currentState.state);
- }
- 
--function getTopmostReportId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-+function getTopmostReportId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -109,7 +121,7 @@ function getTopmostReportId(state: NavigationState<RootStackParamList> | undefin
-     return getTopmostReportId(currentState.state);
- }
- 
--function getTopmostReportActionId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-+function getTopmostReportActionId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -121,7 +133,7 @@ function getTopmostReportActionId(state: NavigationState<RootStackParamList> | u
-     return getTopmostReportActionId(currentState.state);
- }
- 
--function getTopmostTransactionId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-+function getTopmostTransactionId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -133,7 +145,7 @@ function getTopmostTransactionId(state: NavigationState<RootStackParamList> | und
-     return getTopmostTransactionId(currentState.state);
- }
- 
--function getTopmostWorkspaceId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-+function getTopmostWorkspaceId(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -145,7 +157,7 @@ function getTopmostWorkspaceId(state: NavigationState<RootStackParamList> | unde
-     return getTopmostWorkspaceId(currentState.state);
- }
- 
--function getTopmostSearchQuery(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-+function getTopmostSearchQuery(state: NavigationState<RootStackParamList> | undefined): string | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -157,7 +169,7 @@ function getTopmostSearchQuery(state: NavigationState<RootStackParamList> | unde
-     return getTopmostSearchQuery(currentState.state);
- }
- 
--function getTopmostSearchQueryObject(state: NavigationState<RootStackParamList> | undefined): Record<string, string> | undefined {
-+function getTopmostSearchQueryObject(state: NavigationState<RootStackParamList> | undefined): Record<string, string> | undefined {
-     if (!state) {
-         return undefined;
-     }
-@@ -169,7 +181,7 @@ function getTopmostSearchQueryObject(state: NavigationState<Root
+     const shouldShowNotFoundPage = !firstRenderRef.current && !isLoading &&
