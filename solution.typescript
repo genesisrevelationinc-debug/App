@@ -1,0 +1,8 @@
+function updateReportActionMessage(reportID, action) {
+    // Update the action
+    Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${reportID}`, {
+        [action.reportActionID]: action
+    });
+    
+    // But maybe forgets to update the report's lastMessageText?
+}
