@@ -1,9 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {View} from 'react-native';
-import type {OnyxEntry} from 'react-native-onyx';
 import {useOnyx} from 'react-native-onyx';
+import type {OnyxEntry} from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
-import type {PaymentMethod} from '@components/AddPaymentMethodMenu';
 import Button from '@components/Button';
 import DropZoneUI from '@components/DropZone/DropZoneUI';
 import FullScreenLoadingIndicator from '@components/FullscreenLoadingIndicator';
@@ -14,38 +13,39 @@ import {usePersonalDetails, usePolicyCategories} from '@components/OnyxListItemP
 import ParticipantPicker from '@components/ParticipantPicker';
 import PrevNextButtons from '@components/PrevNextButtons';
 import ScreenWrapper from '@components/ScreenWrapper';
-import useConfirmModal from '@hooks/useConfirmModal';
-import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
-import useDefaultExpensePolicy from '@hooks/useDefaultExpensePolicy';
-import useFetchRoute from '@hooks/useFetchRoute';
+import useNetwork from '@hooks/useNetwork';
 import useThemeStyles from '@hooks/useThemeStyles';
-import useWindowDimensions from '@hooks/useWindowDimensions';
-import {completePaymentOnboarding} from '@libs/actions/IOU';
-import * as IOU from '@libs/actions/IOU';
 import * as DeviceCapabilities from '@libs/DeviceCapabilities';
-import * as MoneyRequestUtils from '@libs/MoneyRequestUtils';
+import * as IOUUtils from '@libs/IOUUtils';
 import Navigation from '@libs/Navigation/Navigation';
-import useOptimisticDraftTransactions from '@hooks/useOptimisticDraftTransactions';
-import usePermissions from '@hooks/usePermissions';
-import usePersonalPolicy from '@hooks/usePersonalPolicy';
-import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
-import usePrivateIsArchivedMap from '@hooks/usePrivateIsArchivedMap';
-import useReportAttributes from '@hooks/useReportAttributes';
+import * as OptionsListUtils from '@libs/OptionsListUtils';
 import * as ReportUtils from '@libs/ReportUtils';
-import * as TransactionUtils from '@libs/TransactionUtils';
-import {isPolicyAdmin} from '@libs/PolicyUtils';
-import * as UserUtils from '@libs/UserUtils';
-import type {IOURequestStepConfirmationProps} from '@pages/iou/request/step/IOURequestStepConfirmationPropTypes';
-import * as IOUUtils from '@pages/iou/request/step/IOURequestStepConfirmationUtils';
-import * as Device from '@userActions/Device';
-import {isMobileSafari} from '@libs/Browser';
-import * as IOUActions from '@userActions/IOU';
-import * as LinkActions from '@userActions/Link';
-import * as PolicyActions from '@userActions/Policy';
-import * as UserActions from '@userActions/User';
+import useLocalize from '@hooks/useLocalize';
+import * as IOU from '@userActions/IOU';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
+import type {Route} from '@src/ROUTES';
 import ROUTES from '@src/ROUTES';
+import type SCREENS from '@src/SCREENS';
+import type {Transaction} from '@src/types/onyx';
+import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
+import type {Participant} from '@src/types/onyx/Transaction';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import {getParticipantsFromAccountIDs} from '@libs/TransactionUtils';
+import * as PolicyUtils from '@libs/PolicyUtils';
+import MoneyRequestConfirmationList from './MoneyRequestConfirmationList';
+import StepScreenWrapper from './StepScreenWrapper';
+import withFullTransactionOrNotFound from './withFullTransactionOrNotFound';
+import {setMoneyRequestBillable, setMoneyRequestReimbursable} from '@libs/actions/IOU/MoneyRequest';
+import {setTransactionReport} from '@libs/actions/Transaction';
+import {isMobileSafari} from '@libs/Browser';
+import {canUseTouchScreen} from '@libs/DeviceCapabilities';
+import getIsNarrowLayout from '@libs/getIsNarrowLayout';
+import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
+import {
+    getIsWorkspacesOnlyForTransaction,
+    isMovingTransactionFromTrackExpense as isMovingTransactionFromTrackExpenseIOUUtils,
+    navigateToStartMoneyRequestStep,
     resolveOptimisticChatReportID,
     resolveReportForMoneyRequest,
     shouldShowReceiptEmptyState,
@@ -54,27 +54,40 @@ import ROUTES from '@src/ROUTES';
 import isReportOpenInRHP from '@libs/Navigation/helpers/isReportOpenInRHP';
 import isReportTopmostSplitNavigator from '@libs/Navigation/helpers/isReportTopmostSplitNavigator';
 import isSearchTopmostFullScreenRoute from '@libs/Navigation/helpers/isSearchTopmostFullScreenRoute';
+import {submitWithDismissFirst} from '@libs/Navigation/helpers/submitWithDismissFirst';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
 import type {MoneyRequestNavigatorParamList} from '@libs/Navigation/types';
-import {getParticipantsOption, getReportOption} from '@libs/OptionsListUtils';
-import {findSelfDMReportID, getPolicyExpenseChat, getReportOrDraftReport, isMoneyRequestReport, isPolicyExpenseChat as isPolicyExpenseChatUtils} from '@libs/ReportUtils';
-import {buildCannedSearchQuery, getCurrentSearchQueryJSON} from '@libs/SearchQueryUtils';
-import shouldUseDefaultExpensePolicy from '@libs/shouldUseDefaultExpensePolicy';
-import type {SkeletonSpanReasonAttributes} from '@libs/telemetry/useSkeletonSpan';
-import {
-    getRequestType,
+    const [receiptFile, setReceiptFile] = useState<File | undefined>(undefined);
+    const requestRef = useRef<HTMLFormElement | null>(null);
+    const isDistanceRequest = TransactionUtils.isDistanceRequest(transaction);
+    const [personalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST);
+    const [userWallet] = useOnyx(ONYXKEYS.USER_WALLET);
+    const [bankAccountList] = useOnyx(ONYXKEYS.BANK_ACCOUNT_LIST);
+
+    const isSubmitting = transaction?.isLoading ?? false;
+    const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(report), [report]);
     hasReceipt,
     isDistanceRequest as isDistanceRequestTransactionUtils,
     isManualDistanceRequest as isManualDistanceRequestTransactionUtils,
     isOdometerDistanceRequest as isOdometerDistanceRequestTransactionUtils,
     isScanRequest,
 } from '@libs/TransactionUtils';
-import {getIOURequestPolicyID, getMoneyRequestParticipantsFromReport, setMoneyRequestParticipants, setMoneyRequestParticipantsFromReport} from '@userActions/IOU/MoneyRequest';
-import {setMoneyRequestReceipt} from '@userActions/IOU/Receipt';
-import {removeDraftTransaction, replaceDefaultDraftTransaction} from '@userActions/TransactionEdit';
-import CONST from '@src/CONST';
-import type {IOUType} from '@src/CONST';
-import ONYXKEYS from '@src/ONYXKEYS';
+        [transaction],
+    );
+
+    const isSendMoneyFlow = useMemo(() => {
+        return IOUUtils.isSendMoneyFlow(action);
+    }, [action]);
+
+    const canUseWallet = useMemo(() => {
+        return PolicyUtils.canUseWallet(personalDetails, userWallet, bankAccountList);
+    }, [personalDetails, userWallet, bankAccountList]);
+
+    const shouldShowPaymentOptions = isSendMoneyFlow;
+
+    const isSharingTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
+    const isTrackExpense = iouType === CONST.IOU.TYPE.TRACK;
+    const isTrackExpenseConvertible = isTrackExpense && !isSharingTrackExpense;
 import type {Route} from '@src/ROUTES';
 import ROUTES from '@src/ROUTES';
 import SCREENS from '@src/SCREENS';
@@ -97,15 +110,12 @@ import type {WithWritableReportOrNotFoundProps} from './withWritableReportOrNotF
 import withWritableReportOrNotFound from './withWritableReportOrNotFound';
 
 type IOURequestStepConfirmationIncomingRouteName = typeof SCREENS.MONEY_REQUEST.STEP_CONFIRMATION | typeof SCREENS.MONEY_REQUEST.CREATE;
-    const [didConfirmSplit, setDidConfirmSplit] = useState(false);
-    const [didConfirm, setDidConfirm] = useState(false);
 
-    const [userWallet] = useOnyx(ONYXKEYS.USER_WALLET);
-    const [iouReport] = useOnyx(ONYXKEYS.COLLECTION.REPORT, {selector: (reports) => (reports ? reports[`${ONYXKEYS.COLLECTION.REPORT}${reportID}`] : undefined)});
+type StepConfirmationParams = MoneyRequestNavigatorParamList[typeof SCREENS.MONEY_REQUEST.STEP_CONFIRMATION];
 
-    const isFocused = useIsFocused();
-    const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(ReportUtils.getReport(reportID)), [reportID]);
-    const isSubmittingToWorkspaceChat = useMemo(() => {
+type IOURequestStepConfirmationProps = WithWritableReportOrNotFoundProps<IOURequestStepConfirmationIncomingRouteName> &
+    WithFullTransactionOrNotFoundProps<IOURequestStepConfirmationIncomingRouteName> & {
+        shouldHideHeader?: boolean;
     };
 
 function IOURequestStepConfirmation({
@@ -115,29 +125,19 @@ function IOURequestStepConfirmation({
     transaction: initialTransaction,
     isLoadingTransaction,
     shouldHideHeader = false,
+    navigation,
 }: IOURequestStepConfirmationProps) {
     const params = route.params;
-        return !isPolicyAdmin && isSubmittingToWorkspaceChat;
-    }, [isSubmittingToWorkspaceChat, policy]);
+    const {iouType, reportID, transactionID: initialTransactionID, action, backToReport, backTo} = params;
+    const participantsAutoAssignedFromRoute = route.name === SCREENS.MONEY_REQUEST.STEP_CONFIRMATION ? (params as StepConfirmationParams).participantsAutoAssigned : undefined;
 
-    const isPayRequest = useMemo(() => {
-        return iouType === CONST.IOU.TYPE.PAY;
-    }, [iouType]);
-
-    const canUseWallet = useMemo(() => {
-        return isPayRequest && UserUtils.hasWallet(userWallet);
-    }, [isPayRequest, userWallet]);
-
-    const shouldShowPayButton = isPayRequest && (canUseWallet || !iouReport);
-
-    const isDistanceRequest = useMemo(() => TransactionUtils.isDistanceRequest(transaction), [transaction]);
-    const customUnitRateID = useMemo(() => TransactionUtils.getRateID(transaction), [transaction]);
-
+    const currentUserPersonalDetails = useCurrentUserPersonalDetails();
     const selfDMReport = useSelfDMReport();
     const personalDetails = usePersonalDetails();
     const allPolicyCategories = usePolicyCategories();
 
     const [transactions] = useOptimisticDraftTransactions(initialTransaction);
+    const [participantReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${initialTransaction?.participants?.at(0)?.reportID}`);
     const hasMultipleTransactions = transactions.length > 1;
 
     // Depend on transactions.length to avoid updating transactionIDs when only the transaction details change
@@ -159,14 +159,11 @@ function IOURequestStepConfirmation({
     const isUnreported = transaction?.reportID === CONST.REPORT.UNREPORTED_REPORT_ID;
     const isCreatingTrackExpense = action === CONST.IOU.ACTION.CREATE && iouType === CONST.IOU.TYPE.TRACK;
 
-    const realPolicyID = getIOURequestPolicyID(initialTransaction, reportReal);
+    const realPolicyID = getIOURequestPolicyID(initialTransaction, reportReal ?? participantReport);
     const draftPolicyID = getIOURequestPolicyID(initialTransaction, reportDraft);
     const [policyDraft] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_DRAFTS}${draftPolicyID}`);
     const [policyReal] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${realPolicyID}`);
     const [conciergeReportID] = useOnyx(ONYXKEYS.CONCIERGE_REPORT_ID);
-    const [amountOwed] = useOnyx(ONYXKEYS.NVP_PRIVATE_AMOUNT_OWED);
-    const [userBillingGracePeriodEnds] = useOnyx(ONYXKEYS.COLLECTION.SHARED_NVP_PRIVATE_USER_BILLING_GRACE_PERIOD_END);
-    const [ownerBillingGracePeriodEnd] = useOnyx(ONYXKEYS.NVP_PRIVATE_OWNER_BILLING_GRACE_PERIOD_END);
 
     const expensifyIcons = useMemoizedLazyExpensifyIcons(['ReplaceReceipt', 'SmartScan']);
 
@@ -180,9 +177,16 @@ function IOURequestStepConfirmation({
     const reportWithDraftFallback = useMemo(() => reportReal ?? reportDraft, [reportDraft, reportReal]);
     const shouldHideToSection = useMemo(() => isMoneyRequestReport(reportWithDraftFallback), [reportWithDraftFallback]);
     const report = useMemo(
-        () => resolveReportForMoneyRequest({transaction, transactionReport, routeReport: reportWithDraftFallback, policy: policyReal}),
+        () =>
+            resolveReportForMoneyRequest({
+                transaction,
+                transactionReport,
+                routeReport: reportWithDraftFallback,
+                policy: policyReal,
+            }),
         [transaction, transactionReport, reportWithDraftFallback, policyReal],
     );
+    const [reportDrafts] = useOnyx(ONYXKEYS.COLLECTION.REPORT_DRAFT);
 
     const {policy} = usePolicyForTransaction({
         transaction: initialTransaction,
@@ -196,7 +200,9 @@ function IOURequestStepConfirmation({
 
     const [policyCategoriesDraft] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES_DRAFT}${draftPolicyID}`);
 
-    const [draftTransactionIDs] = useOnyx(ONYXKEYS.COLLECTION.TRANSACTION_DRAFT, {selector: validTransactionDraftIDsSelector});
+    const [draftTransactionIDs] = useOnyx(ONYXKEYS.COLLECTION.TRANSACTION_DRAFT, {
+        selector: validTransactionDraftIDsSelector,
+    });
 
     const reportAttributesDerived = useReportAttributes();
 
@@ -226,12 +232,14 @@ function IOURequestStepConfirmation({
     const isDistanceRequest = isDistanceRequestTransactionUtils(transaction);
     const isManualDistanceRequest = isManualDistanceRequestTransactionUtils(transaction);
     const isManualRequest = transaction?.iouRequestType === CONST.IOU.REQUEST_TYPE.MANUAL;
-    const isOdometerDistanceRequest = isOdometerDistanceRequestTransactionUtils(transaction);
-    const isTimeRequest = requestType === CONST.IOU.REQUEST_TYPE.TIME;
-    const [lastLocationPermissionPrompt] = useOnyx(ONYXKEYS.NVP_LAST_LOCATION_PERMISSION_PROMPT);
-    const privateIsArchivedMap = usePrivateIsArchivedMap();
-
-    const receiptFilename = transaction?.receipt?.filename;
+                        iouType={iouType}
+                        isReadOnly={!isOnline}
+                        isPolicyExpenseChat={isPolicyExpenseChat}
+                        isSendMoneyFlow={isSendMoneyFlow}
+                        shouldShowPaymentOptions={shouldShowPaymentOptions}
+                        policyID={policyID}
+                        receiptPath={receiptFile?.uri ?? ''}
+                        receiptFilename={receiptFile?.name ?? ''}
     const receiptPath = transaction?.receipt?.source;
     const isEditingReceipt = hasReceipt(transaction);
     const isSharingTrackExpense = action === CONST.IOU.ACTION.SHARE;
@@ -259,6 +267,8 @@ function IOURequestStepConfirmation({
         setMoneyRequestParticipantsFromReport(transaction.transactionID, transactionReport, currentUserPersonalDetails.accountID);
     }, [transactionReport, currentUserPersonalDetails.accountID, transaction?.transactionID, iouType]);
 
+    const participantsPolicies = useParticipantsPolicies(transaction?.participants ?? []);
+
     const participants = useMemo(
         () =>
             transaction?.participants?.map((participant) => {
@@ -266,56 +276,26 @@ function IOURequestStepConfirmation({
                     return participant;
                 }
                 const privateIsArchived = privateIsArchivedMap[`${ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS}${participant.reportID}`];
+                const participantReportDraft = reportDrafts?.[`${ONYXKEYS.COLLECTION.REPORT_DRAFT}${participant.reportID}`];
+                const participantPolicy = participant.policyID ? participantsPolicies[participant.policyID] : policy;
                 return participant.accountID
                     ? getParticipantsOption(participant, personalDetails)
-                    : getReportOption(participant, privateIsArchived, policy, personalDetails, conciergeReportID, reportAttributesDerived);
+                    : getReportOption(participant, privateIsArchived, participantPolicy, personalDetails, conciergeReportID, reportAttributesDerived, participantReportDraft);
             }) ?? [],
-        // getReportOrDraftReport (called inside getReportOption) falls back to its module-level allReportsDraft
-        // connection, so we don't need to subscribe to COLLECTION.REPORT_DRAFT here.
-        [transaction?.participants, iouType, personalDetails, reportAttributesDerived, privateIsArchivedMap, policy, conciergeReportID],
+        [transaction?.participants, iouType, personalDetails, reportAttributesDerived, privateIsArchivedMap, participantsPolicies, policy, conciergeReportID, reportDrafts],
     );
 
+    const sourceReportID = transaction?.reportID ?? reportID;
+    const sourceReport = useMemo(() => (sourceReportID ? getReportOrDraftReport(sourceReportID) : undefined), [sourceReportID]);
+    const resolvedDefaultParticipants = useDefaultParticipants({sourceReport, transaction, iouType});
     const defaultParticipants = useMemo(() => {
+        // Don't override the participants the user has already selected, and bail when there is no source report.
         const hasSelectedParticipants = (transaction?.participants ?? []).some((participant) => participant?.selected);
-        if (hasSelectedParticipants) {
+        if (hasSelectedParticipants || !sourceReportID) {
             return [];
         }
-
-        const sourceReportID = transaction?.reportID ?? reportID;
-        if (!sourceReportID) {
-            return [];
-        }
-
-        const sourceReport = getReportOrDraftReport(sourceReportID);
-        let defaultParticipantsOptions = getMoneyRequestParticipantsFromReport(sourceReport, currentUserPersonalDetails.accountID).filter((participant) => participant.selected);
-
-        const isGlobalCreateFlow = transaction?.isFromGlobalCreate ?? transaction?.isFromFloatingActionButton ?? iouType === CONST.IOU.TYPE.CREATE;
-        if (!defaultParticipantsOptions.length && isGlobalCreateFlow) {
-            const canUseDefaultPolicy = shouldUseDefaultExpensePolicy(iouType, defaultExpensePolicy, amountOwed, userBillingGracePeriodEnds, ownerBillingGracePeriodEnd);
-
-            if (canUseDefaultPolicy) {
-                const shouldAutoReport = !!defaultExpensePolicy?.autoReporting || !!personalPolicy?.autoReporting;
-                const defaultTargetReport = shouldAutoReport ? getPolicyExpenseChat(currentUserPersonalDetails.accountID, defaultExpensePolicy?.id) : selfDMReport;
-                defaultParticipantsOptions = getMoneyRequestParticipantsFromReport(defaultTargetReport, currentUserPersonalDetails.accountID).filter((participant) => participant.selected);
-            }
-        }
-
-        return defaultParticipantsOptions;
-    }, [
-        transaction?.participants,
-        transaction?.reportID,
-        transaction?.isFromGlobalCreate,
-        transaction?.isFromFloatingActionButton,
-        reportID,
-        currentUserPersonalDetails.accountID,
-        iouType,
-        defaultExpensePolicy,
-        personalPolicy?.autoReporting,
-        selfDMReport,
-        amountOwed,
-        userBillingGracePeriodEnds,
-        ownerBillingGracePeriodEnd,
-    ]);
+        return resolvedDefaultParticipants;
+    }, [transaction?.participants, sourceReportID, resolvedDefaultParticipants]);
 
     const shouldAutoOpenParticipantPicker = useMemo(() => {
         if (!transaction?.transactionID) {
@@ -348,12 +328,21 @@ function IOURequestStepConfirmation({
             if (!activeTransactionID) {
                 return;
             }
-            setMoneyRequestParticipants(activeTransactionID, participantsList);
+            if (participantsList.at(0)?.isSelfDM) {
+                setMoneyRequestParticipantsFromReport(activeTransactionID, selfDMReport, currentUserPersonalDetails.accountID);
+                setTransactionReport(activeTransactionID, {reportID: CONST.REPORT.UNREPORTED_REPORT_ID}, true);
+                navigation.setParams({iouType: CONST.IOU.TYPE.TRACK});
+            } else {
+                if (iouType !== CONST.IOU.TYPE.SPLIT && iouType !== CONST.IOU.TYPE.CREATE) {
+                    navigation.setParams({iouType: CONST.IOU.TYPE.CREATE});
+                }
+                setMoneyRequestParticipants(activeTransactionID, participantsList);
+            }
             if (participantsList.length > 0) {
                 closeParticipantPicker();
             }
         },
-        [activeTransactionID, closeParticipantPicker],
+        [activeTransactionID, closeParticipantPicker, currentUserPersonalDetails.accountID, navigation, selfDMReport, iouType],
     );
 
     useEffect(() => {
@@ -370,7 +359,11 @@ function IOURequestStepConfirmation({
         }
 
         setMoneyRequestParticipants(transaction.transactionID, defaultParticipants);
-    }, [transaction?.transactionID, transaction?.participants, defaultParticipants, isNewManualExpenseFlowEnabled, isManualRequest]);
+        if (defaultParticipants.at(0)?.isSelfDM) {
+            setTransactionReport(transaction.transactionID, {reportID: CONST.REPORT.UNREPORTED_REPORT_ID}, true);
+            navigation.setParams({iouType: CONST.IOU.TYPE.TRACK});
+        }
+    }, [transaction?.transactionID, transaction?.participants, defaultParticipants, isNewManualExpenseFlowEnabled, isManualRequest, navigation]);
 
     const isPolicyExpenseChat = useMemo(() => {
         const hasPolicyExpenseChat = (participantList: typeof defaultParticipants) =>
@@ -398,38 +391,12 @@ function IOURequestStepConfirmation({
 
     useFetchRoute(transaction, transaction?.comment?.waypoints, action, shouldUseTransactionDraft(action, iouType) ? CONST.TRANSACTION.STATE.DRAFT : CONST.TRANSACTION.STATE.CURRENT);
 
-        );
-    }, [isSubmittingToWorkspaceChat, isSubmittingToWorkspaceWithoutPolicy, isSubmittingToWorkspaceWithoutAdmin, policy, translate]);
+    const policyExpenseChatPolicyID =
+        transaction?.participants?.find((participant) => participant?.isPolicyExpenseChat)?.policyID ??
+        defaultParticipants.find((participant) => participant?.isPolicyExpenseChat)?.policyID ??
+        (isPolicyExpenseChatUtils(report) ? report?.policyID : undefined);
 
-    const payButton = useMemo(() => {
-        if (!shouldShowPayButton) {
-            return null;
-        }
-
-        if (canUseWallet) {
-            return (
-                <Button
-                    success
-                    text={translate('iou.payWithWallet')}
-                    onPress={() => IOU.payMoneyRequestWithWallet(transaction.transactionID, reportID)}
-                    isLoading={formError === 'paying'}
-                />
-            );
-        }
-
-        return (
-            <Button
-                success
-                text={translate('iou.markAsPaid')}
-                onPress={() => IOU.markSendMoneyRequestAsPaid(transaction.transactionID, reportID)}
-                isLoading={formError === 'paying'}
-            />
-        );
-    }, [shouldShowPayButton, canUseWallet, translate, transaction.transactionID, reportID, formError]);
-
-    const confirmContent = useMemo(() => {
-        if (isLoading) {
-            return (
+    const senderPolicyID = transaction?.participants?.find((participant) => !!participant && 'isSender' in participant && participant.isSender)?.policyID;
 
     const {
         hasVerifiedBlobs,
@@ -451,13 +418,12 @@ function IOURequestStepConfirmation({
     const canPreInsertSearch = iouType !== CONST.IOU.TYPE.PAY && iouType !== CONST.IOU.TYPE.SPLIT && !(isPerDiemRequest && iouType === CONST.IOU.TYPE.TRACK);
 
     const {createTransaction, sendMoney, isConfirmed, setIsConfirmed, formHasBeenSubmitted} = useExpenseSubmission({
-                        isPolicyAdmin={isPolicyAdmin}
-                        policyID={policyID}
-                    />
-                    {payButton}
-                    {!!formError && (
-                        <DotIndicatorMessage
-                            style={styles.mt2}
+        transaction,
+        transactions,
+        receiptFiles,
+        report,
+        reportID,
+        policy,
         policyCategories,
         isDraftPolicy,
         currentUserPersonalDetails,
@@ -477,13 +443,12 @@ function IOURequestStepConfirmation({
         isUnreported,
         isPolicyExpenseChat,
         draftTransactionIDs,
-        isSubmittingToWorkspaceWithoutAdmin,
-        isSubmittingToWorkspaceWithoutPolicy,
-        isSubmittingToWorkspaceChat,
-        payButton,
-        policyID,
-        styles.mh0,
-        styles.mt2,
+        privateIsArchivedMap,
+        backToReport,
+    });
+
+    // handleSearchDismiss doesn't pre-insert - it just dismisses the modal when search is
+    // already on top. This is safe for per-diem TRACK (which navigates to self-DM, but when
     // search is on top dismissModalAndOpenReportInInboxTab only dismisses). SPLIT/PAY need
     // dedicated handling because they preserve Search from Spend but reveal a report from
     // other tabs.
@@ -492,7 +457,9 @@ function IOURequestStepConfirmation({
     const hasPreInsertFired = useRef(false);
     const isTransactionReady = !!transaction;
     const selfDMReportID = iouType === CONST.IOU.TYPE.TRACK ? findSelfDMReportID() : undefined;
-    const destinationReportID = backToReport ?? report?.reportID ?? selfDMReportID;
+    const isMRReport = isMoneyRequestReport(report);
+    const destinationReportID =
+        backToReport ?? (isPerDiemRequest && isMRReport && Navigation.getTopmostReportId() !== report?.reportID ? report?.chatReportID : report?.reportID) ?? selfDMReportID;
 
     useEffect(() => {
         if (hasPreInsertFired.current || !isTransactionReady || !getIsNarrowLayout()) {
@@ -522,19 +489,20 @@ function IOURequestStepConfirmation({
         const hasValidDestination = !!destinationReportID && Navigation.getTopmostReportId() !== destinationReportID;
 
         // The report must be in Onyx so the pre-inserted screen can render immediately.
-                        isPolicyAdmin={isPolicyAdmin}
-                        policyID={policyID}
-                    />
-                    {payButton}
-                    {!!formError && (
-                        <DotIndicatorMessage
-                            style={styles.mt2}
+        const isDestinationReportLoaded = !!destinationReportID && !!getReportOrDraftReport(destinationReportID)?.reportID;
+
+        const shouldPreInsertReport = canUseReportPreInsert && isOutsideRHP && hasValidDestination && isDestinationReportLoaded;
+
+        if (!shouldPreInsertSearch && !shouldPreInsertReport) {
+            return;
         }
 
         hasPreInsertFired.current = true;
 
         const preInsertFullscreenRoute: Route = shouldPreInsertSearch
-            ? ROUTES.SEARCH_ROOT.getRoute({query: buildCannedSearchQuery({type: searchType})})
+            ? ROUTES.SEARCH_ROOT.getRoute({
+                  query: buildCannedSearchQuery({type: searchType}),
+              })
             : ROUTES.REPORT_WITH_ID.getRoute(destinationReportID);
 
         const timer = setTimeout(() => {
@@ -548,13 +516,12 @@ function IOURequestStepConfirmation({
             if (!Navigation.getIsFullscreenPreInsertedUnderRHP() || formHasBeenSubmitted.current) {
                 return;
             }
-        isSubmittingToWorkspaceWithoutAdmin,
-        isSubmittingToWorkspaceWithoutPolicy,
-        isSubmittingToWorkspaceChat,
-        payButton,
-        policyID,
-        styles.mh0,
-        styles.mt2,
+
+            Navigation.removePreInsertedFullscreenIfNeeded();
+        };
+        // isFromGlobalCreate, iouType, and canPreInsertSearch are stable for the lifetime of
+        // this screen instance. isTransactionReady and destinationReportID may each flip once
+        // (false -> true / undefined -> ID) as data loads asynchronously, re-triggering the effect.
         // hasPreInsertFired prevents double-firing. Note: if destinationReportID were to change
         // from one valid ID to another (extremely unlikely with Onyx), the pre-insert would not
         // re-fire. This is acceptable because the pre-inserted route is already correct for
@@ -590,10 +557,10 @@ function IOURequestStepConfirmation({
             submitWithDismissFirst({
                 executeWrite: (overrides) =>
                     sendMoney(paymentMethod, {
-                        shouldHandleNavigation: overrides?.shouldHandleNavigation,
+                        shouldHandleNavigation: overrides.shouldHandleNavigation,
                         resolvedReportIDs,
                         shouldStartTracking: false,
-                        shouldDeferForSearch: overrides?.shouldDeferForSearch,
+                        shouldDeferForSearch: false,
                     }),
                 destinationReportID: payDestinationReportID,
                 telemetryContext: {
@@ -788,10 +755,10 @@ function IOURequestStepConfirmation({
                 isCreatingTrackExpense={isCreatingTrackExpense}
             />
             {/*
-             * In this rollout, NEW_MANUAL_EXPENSE_FLOW means this screen is embedded on IOURequestStartPage.
-             * Skip MoneyRequestInitializer here to avoid duplicate initialization and navigation side effects.
+             * When this screen is embedded on IOURequestStartPage (shouldHideHeader=true),
+             * skip MoneyRequestInitializer to avoid duplicate initialization and navigation side effects.
              */}
-            {!isNewManualExpenseFlowEnabled && (
+            {!shouldHideHeader && (
                 <MoneyRequestInitializer
                     isLoadingTransaction={!!isLoadingTransaction}
                     transaction={transaction}
@@ -934,6 +901,7 @@ function IOURequestStepConfirmation({
                             action={action}
                             isPerDiemRequest={isPerDiemRequest}
                             isTimeRequest={isTimeRequest}
+                            isWorkspacesOnly={getIsWorkspacesOnlyForTransaction(transaction, requestType)}
                             onParticipantsAdded={handleParticipantsAdded}
                             onFinish={closeParticipantPicker}
                             isVisible={isParticipantPickerVisible}
@@ -950,7 +918,4 @@ const IOURequestStepConfirmationWithFullTransactionOrNotFound = withFullTransact
 
 const IOURequestStepConfirmationWithWritableReportOrNotFound = withWritableReportOrNotFound(IOURequestStepConfirmationWithFullTransactionOrNotFound);
 
-type IOURequestStepConfirmationPublicProps = ComponentProps<typeof IOURequestStepConfirmationWithWritableReportOrNotFound>;
-
 export default IOURequestStepConfirmationWithWritableReportOrNotFound;
-export type {IOURequestStepConfirmationPublicProps};
