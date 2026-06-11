@@ -1,18 +1,17 @@
-import type {OnyxEntry} from 'react-native-onyx';
+import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
+import Onyx from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
+import lodashIsEmpty from 'lodash/isEmpty';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {BankAccountList, Card, CardList, CompanyCardFeed, PersonalDetailsList, WorkspaceCardsList, WorkspaceCompanyCardFeed} from '@src/types/onyx';
-import {isEmptyObject} from '@src/types/utils/EmptyObject';
-import type {TranslationPaths} from '@src/languages/types';
+import type {Card, CardList, CompanyCardFeed, OnyxPolicy} from '@src/types/onyx';
 import type {CombinedCardFeed, CombinedCardFeeds} from '@hooks/useCardFeeds';
-import DateUtils from './DateUtils';
-import * as Localize from './Localize';
-import * as PersonalDetailsUtils from './PersonalDetailsUtils';
-import * as PolicyUtils from './PolicyUtils';
-import type {TranslationOptions} from './Localize';
-
-type CardFeed = ValueOf<typeof CONST.COMPANY_CARD.FEED_BANK>;
+import type {FeedKeysWithAssignedCards} from '@hooks/useFeedKeysWithAssignedCards';
+import type IllustrationsType from '@styles/theme/illustrations/types';
+import CONST from '@src/CONST';
+import type {TranslationPaths} from '@src/languages/types';
+import ONYXKEYS from '@src/ONYXKEYS';
+import ROUTES from '@src/ROUTES';
 import type {
     BankAccountList,
     Card,
@@ -235,58 +234,42 @@ function getCardDescriptionForSearchTable(card: Card, translate: LocalizedTransl
     if (isCSVCard) {
         return card.nameValuePairs?.cardTitle ?? card.cardName ?? '';
     }
-    return card?.bank !== CONST.EXPENSIFY_CARD.BANK;
+    const finalName = getDefaultCardName(displayName ?? '') ?? card.cardName;
+    return card.lastFourPAN ? `${finalName} ${CONST.DOT_SEPARATOR} ${card.lastFourPAN}` : `${finalName}`;
 }
 
 /**
- * Checks if a company card feed has a pending or failed connection state
- * that should trigger a "fix connection" warning.
- */
-function hasCompanyCardFeedConnectionError(feed: CompanyCardFeed | undefined): boolean {
-    if (!feed) {
-        return false;
-    }
-    
-    // Only show connection error if the feed is explicitly in an error state
-    // and not currently pending or in a transient state
-    const isPending = feed.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.ADD || feed.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE;
-    const isDeleting = feed.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE;
-    
-    // If the feed is pending or being deleted, don't show error yet
-    if (isPending || isDeleting) {
-        return false;
-    }
-    
-    // Check for explicit error states - only show error if there's a real connection failure
-    const hasError = feed.errors && Object.keys(feed.errors).length > 0;
-    
-    return !!hasError;
-}
-
-export {
-    getCardDescription,
-    getCardNumber,
+ * Returns the formatted card name for a company card. Returns an empty string
  * if the card is not a real card, but a cash expense
  */
 function getCompanyCardDescription(translate: LocalizedTranslate, transactionCardName?: string, cardID?: number, cards?: CardList) {
-    const formattedTransactionCardName = transactionCardName === CONST.EXPENSE.TYPE.CASH_CARD_NAME ? '' : transactionCardName;
+    return isDisabled ? iconMap.Disabled : (iconMap[cardFeed] ?? iconMap.Fallback);
+}
 
-    if (!cardID || !cards?.[cardID]) {
-        return formattedTransactionCardName;
-    getCardFeedIcon,
-    getCardFeedName,
-    isCard,
-    hasCompanyCardFeedConnectionError,
-};
-    if (isTravelCard(card)) {
-        return translate('cardTransactions.travelInvoicing');
+/**
+ * Check if a company card feed has an pending/errored state that requires user action
+ */
+function hasCompanyCardFeedError(feed: CompanyCardFeed): boolean {
+    if (!feed) {
+        return false;
     }
+    return feed.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE || feed.pendingAction === CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE;
+}
 
-    if (isExpensifyCard(card)) {
-        return formattedTransactionCardName;
+/**
+ * Check if any company card feed has a pending/errored state that requires user action
+ */
+    const card = cards[cardID];
+    if (!feed) {
+        return false;
     }
+    return Object.values(feed).some((feedItem) => hasCompanyCardFeedError(feedItem));
+}
 
-    return card.cardName === CONST.EXPENSE.TYPE.CASH_CARD_NAME ? '' : card.cardName;
+export {getDomainFromEmail, getCardDescription, getCardIcon, getCardFeedIcon, getCardList, getEligibleCardList, hasCardList, hasEligibleCard, getCardBrand, isExpensifyCard, isCorporateCard, getCardType, getCardFeedIcon, hasCompanyCardFeedError, hasCompanyCardFeedError as hasCompanyCardFeedErrorLegacy};
+
+// Export for tests
+export {getCardNumberFromDescription};
 }
 
 function isCard(item: Card | Record<string, string>): item is Card {
@@ -1444,6 +1427,23 @@ function getPreferredPolicyFromExpensifyCardSettings(settings: ExpensifyCardSett
     return undefined;
 }
 
+/** Resolves domainName from the settings root or any nested program block that defines it. */
+function getDomainNameFromExpensifyCardSettings(settings: ExpensifyCardSettings | OnyxEntry<ExpensifyCardSettings>): string | undefined {
+    if (!settings) {
+        return undefined;
+    }
+    if (settings.domainName) {
+        return settings.domainName;
+    }
+    for (const key of NESTED_EXPENSIFY_CARD_PROGRAM_KEYS) {
+        const nestedDomainName = getNestedExpensifyCardProgramSettings(settings, key)?.domainName;
+        if (nestedDomainName) {
+            return nestedDomainName;
+        }
+    }
+    return undefined;
+}
+
 function isCardPendingIssue(card?: Card) {
     return card?.state === CONST.EXPENSIFY_CARD.STATE.STATE_NOT_ISSUED;
 }
@@ -1969,6 +1969,7 @@ export {
     getCardProgramKey,
     getLinkedPolicyIDsFromExpensifyCardSettings,
     getPreferredPolicyFromExpensifyCardSettings,
+    getDomainNameFromExpensifyCardSettings,
     isPolicyIDInLinkedExpensifyCardPolicyList,
     filterAllInactiveCards,
     filterInactiveCards,
