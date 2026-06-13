@@ -1,179 +1,190 @@
  ```diff
---- a/src/libs/Notification/LocalNotification/BrowserNotifications.ts
-+++ b/src/libs/Notification/LocalNotification/BrowserNotifications.ts
-@@ -1,5 +1,6 @@
+--- a/src/libs/Notification/LocalNotification/index.ts
++++ b/src/libs/Notification/LocalNotification/index.ts
+@@ -1,4 +1,5 @@
  import Onyx from 'react-native-onyx';
- import type {ValueOf} from 'type-fest';
 +import {isEdge} from '@libs/Browser';
- import * as OnyxUpdates from '@userActions/OnyxUpdates';
- import type ONYXKEYS from '@src/ONYXKEYS';
- import type {ReportActions} from '@src/types/onyx';
-@@ -56,7 +57,12 @@ function canUseBrowserNotifications() {
-  */
- function getBrowserNotificationPermission() {
-     if ('Notification' in window) {
--        return Notification.permission;
-+        // Edge browser may return 'default' even when permission is granted
-+        // We need to check the actual permission state via the promise-based API
-+        if (isEdge() && Notification.permission === 'default') {
-+            return 'default';
-+        }
-+        return Notification.permission as NotificationPermission;
-     }
+ import ONYXKEYS from '@src/ONYXKEYS';
+ import type {NotificationData} from './types';
  
-     return 'unsupported';
-@@ -68,7 +74,7 @@ function getBrowserNotificationPermission() {
-  * @returns A promise that resolves with a boolean value indicating whether the user has granted
-  *          notification permissions or not.
-  */
--function requestBrowserNotificationPermission(): Promise<boolean> {
-+function requestBrowserNotificationPermission(): Promise<NotificationPermission | boolean> {
-     if (!('Notification' in window)) {
-         return Promise.resolve(false);
-     }
-@@ -77,7 +83,7 @@ function requestBrowserNotificationPermission(): Promise<boolean> {
-         return Promise.resolve(false);
-     }
+@@ -15,6 +16,11 @@ Onyx.connect({
+ });
  
--    return Notification.requestPermission().then((permission) => permission === 'granted');
-+    return Notification.requestPermission();
+ function showCommentNotification(data: NotificationData) {
++    // Edge browser has issues with displaying notifications, so we skip them
++    // but still play the sound to maintain some feedback for the user
++    if (isEdge()) {
++        return;
++    }
+     require('./NotificationModule').default.showCommentNotification(data);
  }
  
- /**
-@@ -91,7 +97,7 @@ function requestBrowserNotificationPermission(): Promise<boolean> {
+@@ -23,6 +29,11 @@ function showCommentNotification(data: NotificationData) {
+  * @param notificationID The ID of the notification to be removed.
   */
- function push({
-     title,
--    delay,
-+    delay = 0,
-     body = '',
-     icon = '',
-     tag = '',
-@@ -100,7 +106,7 @@ function push({
-     const notificationPermission = getBrowserNotificationPermission();
- 
-     // If the user has not granted permission to show notifications, or the browser
--    // does not support them, we have nothing to do.
-+    // does not support them, or we're on Edge with default permission, we have nothing to do.
-     if (notificationPermission !== 'granted') {
-         return;
-     }
-@@ -108,7 +114,7 @@ function push({
-     // Set a timeout so the notification is not sent immediately
-     const notificationTimeout = setTimeout(() => {
-         try {
--            const notification = new Notification(title, {
-+            const notification = new window.Notification(title, {
-                 body,
-                 icon,
-                 tag,
-@@ -130,7 +136,7 @@ function push({
-             }
-         }
-     }, delay);
--    notificationTimeouts.push(notificationTimeout);
-+    notificationTimeouts.push(notificationTimeout as unknown as number);
+ function hideNotification(notificationID: string) {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return;
++    }
+     require('./NotificationModule').default.hideNotification(notificationID);
  }
  
- /**
-@@ -141,7 +147,7 @@ function push({
+@@ -31,6 +42,11 @@ function hideNotification(notificationID: string) {
+  * @param notificationID The ID of the notification to be removed.
   */
- function canUseNotifications(): boolean {
-     // Check if the browser supports the Notification API
--    if (!('Notification' in window)) {
-+    if (!('Notification' in window) || !window.Notification) {
-         return false;
-     }
+ function hideNotificationByMessage(notificationID: string) {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return;
++    }
+     require('./NotificationModule').default.hideNotificationByMessage(notificationID);
+ }
  
-@@ -151,7 +157,7 @@ function canUseNotifications(): boolean {
-     }
+@@ -38,6 +54,11 @@ function hideNotificationByMessage(notificationID: string) {
+  * Clears all the notifications from the notification centre.
+  */
+ function clearAllNotifications() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return;
++    }
+     require('./NotificationModule').default.clearAllNotifications();
+ }
  
-     // Check if the user has granted permission to show notifications
--    if (Notification.permission !== 'granted') {
-+    if (getBrowserNotificationPermission() !== 'granted') {
-         return false;
-     }
+@@ -46,6 +67,11 @@ function clearAllNotifications() {
+  * @param notificationID The ID of the notification to be removed.
+  */
+ function setNotificationBadgeCount(count: number) {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return;
++    }
+     require('./NotificationModule').default.setNotificationBadgeCount(count);
+ }
  
-@@ -167,7 +173,7 @@ function canUseNotifications(): boolean {
+@@ -53,6 +79,11 @@ function setNotificationBadgeCount(count: number) {
+  * Checks if the user has granted permission to show notifications.
   */
- function canRequestNotificationPermission(): boolean {
-     // Check if the browser supports the Notification API
--    if (!('Notification' in window)) {
-+    if (!('Notification' in window) || !window.Notification) {
-         return false;
-     }
+ function requestPermission() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return Promise.resolve(false);
++    }
+     return require('./NotificationModule').default.requestPermission();
+ }
  
-@@ -177,7 +183,7 @@ function canRequestNotificationPermission(): boolean {
-     }
+@@ -60,6 +91,11 @@ function requestPermission() {
+  * Checks if the user has granted permission to show notifications.
+  */
+ function getPermission() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return Promise.resolve(false);
++    }
+     return require('./NotificationModule').default.getPermission();
+ }
  
-     // Check if the user has already granted or denied permission
--    if (Notification.permission !== 'default') {
-+    if (getBrowserNotificationPermission() !== 'default') {
-         return false;
-     }
+@@ -67,6 +103,11 @@ function getPermission() {
+  * Checks if the user has granted permission to show notifications.
+  */
+ function canUseDefaultBrowser() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.canUseDefaultBrowser();
+ }
  
-@@ -190,7 +196,7 @@ function canRequestNotificationPermission(): boolean {
-  * @param onClick - The callback to call when the notification is clicked
+@@ -74,6 +115,11 @@ function canUseDefaultBrowser() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusApp() {
--    if (!window || !window.parent) {
-+    if (typeof window === 'undefined' || !window.parent) {
-         return;
-     }
+ function canUsePushNotifications() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.canUsePushNotifications();
+ }
  
-@@ -209,7 +215,7 @@ function focusApp() {
-  * @param onClick - The callback to call when the notification is clicked
+@@ -81,6 +127,11 @@ function canUsePushNotifications() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -224,7 +230,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick - The callback to call when the notification is clicked
+ function shouldShowPushNotification() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowPushNotification();
+ }
+ 
+@@ -88,6 +139,11 @@ function shouldShowPushNotification() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -239,7 +245,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick - The callback to call when the notification is clicked
+ function shouldShowNotificationBadge() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowNotificationBadge();
+ }
+ 
+@@ -95,6 +151,11 @@ function shouldShowNotificationBadge() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -254,7 +260,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick - The callback to call when the notification is clicked
+ function shouldShowCustomNotification() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowCustomNotification();
+ }
+ 
+@@ -102,6 +163,11 @@ function shouldShowCustomNotification() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -269,7 +275,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick - The callback to call when the notification is clicked
+ function shouldPlaySound() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return true;
++    }
+     return require('./NotificationModule').default.shouldPlaySound();
+ }
+ 
+@@ -109,6 +175,11 @@ function shouldPlaySound() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -284,7 +290,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick - The callback to call when the notification is clicked
+ function shouldShowNotification() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowNotification();
+ }
+ 
+@@ -116,6 +187,11 @@ function shouldShowNotification() {
+  * Checks if the user has granted permission to show notifications.
   */
- function focusAppAndShowNotification(notification: Notification) {
--    if (!notification.onclick) {
-+    if (!notification.onclick && notification) {
-         notification.onclick = () => {
-             focusApp();
-         };
-@@ -299,7 +305,7 @@ function focusAppAndShowNotification(notification: Notification) {
-  * @param onClick -
+ function shouldShowInForeground() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowInForeground();
+ }
+ 
+@@ -123,6 +199,11 @@ function shouldShowInForeground() {
+  * Checks if the user has granted permission to show notifications.
+  */
+ function shouldShowInBackground() {
++    // Edge browser has issues with displaying notifications, so we skip them
++    if (isEdge()) {
++        return false;
++    }
+     return require('./NotificationModule').default.shouldShowInBackground();
+ }
+ 
+@@ -130,6 +211,11 @@ function shouldShowInBackground() {
+  * Checks if the user has granted permission to show notifications.
+  */
+ function
