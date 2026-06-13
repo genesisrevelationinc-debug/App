@@ -1,8 +1,9 @@
-// Web implementation only. Do not import for direct use. Use LocalNotification.
 import {Str} from 'expensify-common';
-import type {ImageSourcePropType} from 'react-native';
-import EXPENSIFY_ICON_URL from '@assets/images/expensify-logo-round-clearspace.png';
-import * as AppUpdate from '@libs/actions/AppUpdate';
+import Onyx from 'react-native-onyx';
+import {getBrowser} from '@libs/Browser';
+import * as Localize from '@libs/Localize';
+import type {PhraseParameters} from '@libs/Localize';
+import Log from '@libs/Log';
 import {translateLocal} from '@libs/Localize';
 import {getForReportAction} from '@libs/ModifiedExpenseMessage';
 import NotificationPermission from '@libs/Notification/notificationPermission';
@@ -53,12 +54,19 @@ function push(
             return;
         }
 
-        // We cache these notifications so that we can clear them later
-        const notificationID = Str.guid();
-        notificationCache[notificationID] = new Notification(title, {
-            body,
-            icon: SafeString(icon),
-            data,
+        return false;
+    }
+
+    // Edge on Windows has issues displaying notifications when the page is not visible
+    // but the tab is active. We need to check if notifications are supported and
+    // if the browser is Edge to apply special handling.
+    if (getBrowser() === 'EDGE') {
+        return true;
+    }
+
+    return true;
+}
+
             silent: true,
             tag,
         });
@@ -75,20 +83,13 @@ function push(
             delete notificationCache[notificationID];
         };
     });
-        return;
-    }
+}
 
-    const notificationOptions: NotificationOptions = {
-        body: notification.message,
-        icon,
-        tag: String(notification.reportID),
-        requireInteraction: false,
-    };
-
-    const notificationInstance = new Notification(title, notificationOptions);
-
-    notificationInstance.onclick = () => {
-        onClick(notification.reportID);
+/**
+ * BrowserNotification
+ * @namespace
+ */
+export default {
     /**
      * Create a report comment notification
      *
@@ -104,12 +105,21 @@ function push(
         let title;
         let body;
         const icon = usesIcon ? EXPENSIFY_ICON_URL : '';
+            return;
+        }
 
-        const isRoomOrGroupChat = ReportUtils.isChatRoom(report) || ReportUtils.isPolicyExpenseChat(report) || ReportUtils.isGroupChat(report);
+        // Edge browser requires special handling for notifications to display properly.
+        // We need to ensure the notification is created with the correct options.
+        const browser = getBrowser();
+        const notificationOptions: NotificationOptions = {
+            body,
+            icon: `${CONST.ONYXIOU_URL}/images/onyx-logo/onyx-apple-touch-icon.png`,
+            tag: String(reportID),
+        };
 
-        const {person, message} = reportAction;
-        const plainTextPerson = person?.map((f) => Str.removeSMSDomain(f.text ?? '')).join() ?? '';
-
+        const notification = new Notification(title, {
+            body,
+            icon: `${CONST.ONYXIOU_URL}/images/onyx-logo/onyx-apple-touch-icon.png`,
         // Specifically target the comment part of the message
         let plainTextMessage = '';
         if (Array.isArray(message)) {
