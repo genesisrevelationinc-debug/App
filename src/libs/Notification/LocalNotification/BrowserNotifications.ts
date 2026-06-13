@@ -54,19 +54,12 @@ function push(
             return;
         }
 
-        return false;
-    }
-
-    // Edge on Windows has issues displaying notifications when the page is not visible
-    // but the tab is active. We need to check if notifications are supported and
-    // if the browser is Edge to apply special handling.
-    if (getBrowser() === 'EDGE') {
-        return true;
-    }
-
-    return true;
-}
-
+        // We cache these notifications so that we can clear them later
+        const notificationID = Str.guid();
+        notificationCache[notificationID] = new Notification(title, {
+            body,
+            icon: SafeString(icon),
+            data,
             silent: true,
             tag,
         });
@@ -109,20 +102,18 @@ export default {
         }
 
         // Edge browser requires special handling for notifications to display properly.
-        // We need to ensure the notification is created with the correct options.
+        // Edge on Windows sometimes fails to show notifications when the page is not visible
+        // but the tab is active. Adding requireInteraction helps ensure the notification is shown.
         const browser = getBrowser();
-        const notificationOptions: NotificationOptions = {
-            body,
-            icon: `${CONST.ONYXIOU_URL}/images/onyx-logo/onyx-apple-touch-icon.png`,
-            tag: String(reportID),
-        };
+        const isEdge = browser === 'EDGE';
 
         const notification = new Notification(title, {
             body,
             icon: `${CONST.ONYXIOU_URL}/images/onyx-logo/onyx-apple-touch-icon.png`,
-        // Specifically target the comment part of the message
-        let plainTextMessage = '';
-        if (Array.isArray(message)) {
+            ...(isEdge ? {requireInteraction: false} : {}),
+        });
+
+        notification.onclick = () => {
             plainTextMessage = getTextFromHtml(message?.find((f) => f?.type === 'COMMENT')?.html);
         } else {
             plainTextMessage = message?.type === 'COMMENT' ? getTextFromHtml(message?.html) : '';
