@@ -1,10 +1,9 @@
-import Onyx from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
-import Str from 'expensify-common/lib/str';
-import {Platform} from 'react-native';
-import ONYXKEYS from '@src/ONYXKEYS';
-import type {Report} from '@src/types/onyx';
-import type {Notification} from '@src/types/onyx/Notification';
+// Web implementation only. Do not import for direct use. Use LocalNotification.
+import {Str} from 'expensify-common';
+import type {ImageSourcePropType} from 'react-native';
+import EXPENSIFY_ICON_URL from '@assets/images/expensify-logo-round-clearspace.png';
+import * as AppUpdate from '@libs/actions/AppUpdate';
+import {translateLocal} from '@libs/Localize';
 import {getForReportAction} from '@libs/ModifiedExpenseMessage';
 import NotificationPermission from '@libs/Notification/notificationPermission';
 import {getTextFromHtml} from '@libs/ReportActionsUtils';
@@ -79,15 +78,14 @@ function push(
         return;
     }
 
-    const options: NotificationOptions = {
+    const notificationOptions: NotificationOptions = {
         body: notification.message,
         icon,
         tag: notification.reportID,
         requireInteraction: false,
-        silent: false,
     };
 
-    const notificationInstance = new Notification(title, options);
+    const notificationInstance = new Notification(title, notificationOptions);
 
     notificationInstance.onclick = () => {
         onClick(notification.reportID);
