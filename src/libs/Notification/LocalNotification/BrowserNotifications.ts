@@ -81,7 +81,7 @@ function push(
     const notificationOptions: NotificationOptions = {
         body: notification.message,
         icon,
-        tag: notification.reportID,
+        tag: String(notification.reportID),
         requireInteraction: false,
     };
 
