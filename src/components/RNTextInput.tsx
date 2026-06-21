@@ -1,32 +1,58 @@
-import type {MarkdownTextInputProps} from '@expensify/react-native-live-markdown';
-import React, {useCallback, useEffect, useRef} from 'react';
-import type {TextInput as RNTextInputComponent, TextInputProps as RNTextInputProps} from 'react-native';
+import type {ForwardedRef} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {NativeModules} from 'react-native';
+import type {TextInput as NativeTextInput} from 'react-native';
+import type {TextInputProps} from 'react-native';
 import {TextInput} from 'react-native';
-import type {AnimatedTextInputRef} from '@components/RNTextInput';
 import useLandscapeOnBlurProxy from '@hooks/useLandscapeOnBlurProxy';
 import useTheme from '@hooks/useTheme';
-import useThemeStyles from '@hooks/useThemeStyles';
-import variables from '@styles/variables';
-import type {TextInputProps} from './TextInput/BaseTextInput/types';
-import * as MarkdownUtils from '@libs/MarkdownUtils';
+import textarea from '@styles/textarea';
+import type {RNTextInputProps} from './TextInput/BaseTextInput/types';
 
-type RNTextInputPropsWithRef = RNTextInputProps & React.RefAttributes<RNTextInputComponent>;
+const {RNTextInputModule} = NativeModules;
 
+// TextInput component using React Native
+const RNTextInputWithRef = React.forwardRef(({maxLength, ...props}: RNTextInputProps, ref: ForwardedRef<NativeTextInput>) => {
+    const theme = useTheme();
 type AnimatedTextInputRef = typeof AnimatedTextInput & TextInput & HTMLInputElement;
+    const [selection, setSelection] = useState<{start: number; end: number} | undefined>();
+    const [text, setText] = useState('');
+    const [textInputWidth, setTextInputWidth] = useState(0);
+    const [pastedText, setPastedText] = useState('');
 
-type RNTextInputWithRefProps = TextInputProps &
-    ForwardedFSClassProps & {
-        ref?: ForwardedRef<AnimatedTextInputRef>;
-    };
-
+    const handleSelectionChange = useCallback(
+        (event: {nativeEvent: {selection: {start: number; end: number}}}) => {
 function RNTextInputWithRef({ref, forwardedFSClass = CONST.FULLSTORY.CLASS.UNMASK, ...props}: RNTextInputWithRefProps) {
     const theme = useTheme();
-    const inputRef = useRef<AnimatedTextInputRef | null>(null);
-    const handleBlur = useLandscapeOnBlurProxy(inputRef, props.onBlur);
+        [setSelection],
+    );
 
-    return (
-        <AnimatedTextInput
-            allowFontScaling={false}
+    const handleOnPaste = useCallback(
+        (event: {nativeEvent: {text: string}}) => {
+            const pasted = event.nativeEvent.text;
+            setPastedText(pasted);
+            
+            // Apply markdown formatting to pasted text
+            if (pasted && props.onChangeText) {
+                props.onChangeText(pasted);
+            }
+        },
+        [props],
+    );
+
+    useEffect(() => {
+        if (pastedText && props.onChangeText) {
+            const timer = setTimeout(() => {
+                setPastedText('');
+            }, 0);
+            return () => clearTimeout(timer);
+        }
+        return undefined;
+    }, [pastedText, props]);
+
+    useEffect(() => {
+        if (!maxLength || !text || text.length <= maxLength) {
+            return;
             textBreakStrategy="simple"
             keyboardAppearance={theme.colorScheme}
             ref={(refHandle: AnimatedTextInputRef) => {
@@ -38,50 +64,19 @@ function RNTextInputWithRef({ref, forwardedFSClass = CONST.FULLSTORY.CLASS.UNMAS
             }}
             // eslint-disable-next-line react/forbid-component-props
             fsClass={forwardedFSClass}
-    const theme = useTheme();
-    const themeStyles = useThemeStyles();
-    const ref = useRef<RNTextInputComponent | null>(null);
-    const {isMarkdownEnabled} = useMarkdownEnabled();
-
-    useEffect(() => {
-        if (!ref.current) {
-
-export default RNTextInputWithRef;
-        ref.current.setNativeProps({numberOfLines: {numberOfLines}});
-    }, [numberOfLines]);
-
-    const handleOnPaste = useCallback(
-        (event: React.ClipboardEvent<HTMLInputElement>) => {
-            if (!isMarkdownEnabled || !props.onPaste) {
-                return;
-            }
-
-            const clipboardData = event.clipboardData;
-            if (!clipboardData) {
-                return;
-            }
-
-            const html = clipboardData.getData('text/html');
-            if (!html) {
-                return;
-            }
-
-            const markdown = MarkdownUtils.htmlToMarkdown(html);
-            if (markdown) {
-                event.preventDefault();
-                props.onPaste(event as unknown as React.ClipboardEvent<RNTextInputComponent>);
-            }
-        },
-        [isMarkdownEnabled, props.onPaste],
-    );
-
-    return (
-        <TextInput
-            ref={(element) => {
-            // eslint-disable-next-line react/jsx-props-no-spreading
+            // eslint-disable-next-line
             {...props}
-            numberOfLines={0}
-            onPaste={handleOnPaste}
+            onBlur={handleBlur}
         />
     );
 }
+
+export default RNTextInputWithRef;
+export type {AnimatedTextInputRef};
+            onSelectionChange={handleSelectionChange}
+            selection={selection}
+            onChangeText={handleChangeText}
+            onPaste={handleOnPaste}
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            {...props}
+            maxLength={maxLength}
