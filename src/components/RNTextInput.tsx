@@ -1,21 +1,20 @@
 import type {MarkdownTextInputProps} from '@expensify/react-native-live-markdown';
-import MarkdownTextInput from '@expensify/react-native-live-markdown';
-import type {ClipboardEvent} from '@expensify/react-native-live-markdown/lib/commonjs/MarkdownTextInput';
 import type {ForwardedRef} from 'react';
 import React, {forwardRef} from 'react';
 import type {TextInput as OriginalTextInput} from 'react-native';
 import useLandscapeOnBlurProxy from '@hooks/useLandscapeOnBlurProxy';
-import useTheme from '@hooks/useTheme';
-import type {ForwardedFSClassProps} from '@libs/Fullstory/types';
-import CONST from '@src/CONST';
+// eslint-disable-next-line no-restricted-imports
+import type {TextInputProps as RNTextInputProps} from './TextInput/BaseTextInput/types';
+import type CustomTextInputProps from './TextInput/BaseTextInput/types';
+import MarkdownTextInput from './MarkdownTextInput';
+
 // We can't use the common type for ref because we need to use the ref from the original TextInput component
 // eslint-disable-next-line react/function-component-definition, react/no-unused-prop-types
 const RNTextInput = forwardRef<OriginalTextInput, RNTextInputProps>(function RNTextInput(props, ref) {
-    return <MarkdownTextInput ref={ref as ForwardedRef<MarkdownTextInput>} {...props} onPaste pasteAsPlainText />;
+    return <MarkdownTextInput ref={ref as ForwardedRef<MarkdownTextInput>} {...props} />;
 });
 
 export default RNTextInput;
-    ForwardedFSClassProps & {
         ref?: ForwardedRef<AnimatedTextInputRef>;
     };
 
