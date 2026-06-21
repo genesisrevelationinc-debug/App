@@ -1,83 +1,81 @@
-
-import {useFocusEffect} from '@react-navigation/native';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import React, {useCallback, useMemo, useState} from 'react';
 import {View} from 'react-native';
 import type {OnyxEntry} from 'react-native-onyx';
-import useAttendees from '@hooks/useAttendees';
+import {useOnyx} from 'react-native-onyx';
 import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
-import useIsInLandscapeMode from '@hooks/useIsInLandscapeMode';
 import useLocalize from '@hooks/useLocalize';
-import {MouseProvider} from '@hooks/useMouseContext';
-import usePermissions from '@hooks/usePermissions';
-import usePolicyForMovingExpenses from '@hooks/usePolicyForMovingExpenses';
-import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
-import usePreferredPolicy from '@hooks/usePreferredPolicy';
+import useNetwork from '@hooks/useNetwork';
+import usePolicy from '@hooks/usePolicy';
 import usePrevious from '@hooks/usePrevious';
 import useThemeStyles from '@hooks/useThemeStyles';
-import {isCategoryDescriptionRequired} from '@libs/CategoryUtils';
+import * as CurrencyUtils from '@libs/CurrencyUtils';
 import DistanceRequestUtils from '@libs/DistanceRequestUtils';
-import {isMovingTransactionFromTrackExpense as isMovingTransactionFromTrackExpenseUtil} from '@libs/IOUUtils';
-import Navigation from '@libs/Navigation/Navigation';
-import {hasEnabledOptions} from '@libs/OptionsListUtils';
-import {isTaxTrackingEnabled} from '@libs/PolicyUtils';
+import usePrevious from '@hooks/usePrevious';
+import * as PolicyUtils from '@libs/PolicyUtils';
+import * as ReportUtils from '@libs/ReportUtils';
+import * as TransactionUtils from '@libs/TransactionUtils';
+import type {Option} from '@src/types/onyx/IOU';
+import type {MoneyRequestConfirmationListProps, MoneyRequestConfirmationListItem} from './MoneyRequestConfirmationList/types';
+import MoneyRequestConfirmationList from './MoneyRequestConfirmationList/Base';
+import type {BaseMoneyRequestConfirmationListProps} from './MoneyRequestConfirmationList/types';
 import type {OptionData} from '@libs/ReportUtils';
-import {
-    getCategory,
-    getCurrency,
-    getMerchant,
-    getRateID,
-    hasValidModifiedAmount,
-    isDistanceRequest as isDistanceRequestUtil,
+function MoneyRequestConfirmationListWithOnyx(props: MoneyRequestConfirmationListProps) {
+    const {translate} = useLocalize();
+    const styles = useThemeStyles();
+    const {isOffline} = useNetwork();
+    const navigation = useNavigation();
+    const policy = usePolicy(props.policyID);
+    const [betas] = useOnyx(ONYXKEYS.BETAS);
     isGPSDistanceRequest as isGPSDistanceRequestUtil,
-    isManualDistanceRequest as isManualDistanceRequestUtil,
-} from '@libs/TransactionUtils';
-import type {IOUAction, IOUType} from '@src/CONST';
-import CONST from '@src/CONST';
-import ROUTES from '@src/ROUTES';
-import type * as OnyxTypes from '@src/types/onyx';
-import type {Participant} from '@src/types/onyx/IOU';
+    const [personalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST);
+    const [session] = useOnyx(ONYXKEYS.SESSION);
+    const [splitSelectedParticipants] = useOnyx(ONYXKEYS.SPLIT_SELECTED_PARTICIPANTS);
+    const [iouCustomUnit] = useOnyx(ONYXKEYS.IOU_CUSTOM_UNIT);
+    const [lastSelectedDistanceRates] = useOnyx(ONYXKEYS.NVP_LAST_SELECTED_DISTANCE_RATES);
+    const [policyCategories] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES}${props.policyID}`);
+    const [policyTags] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_TAGS}${props.policyID}`);
 import type {PaymentMethodType} from '@src/types/onyx/OriginalMessage';
-import {useDelegateNoAccessActions, useDelegateNoAccessState} from './DelegateNoAccessModalProvider';
-import buildConfirmAction from './MoneyRequestConfirmationList/confirmAction';
-import ConfirmationFooterContent from './MoneyRequestConfirmationList/ConfirmationFooterContent';
-import ConfirmationTelemetry from './MoneyRequestConfirmationList/ConfirmationTelemetry';
-import DistanceRequestController from './MoneyRequestConfirmationList/DistanceRequestController';
-import FieldAutoSelector from './MoneyRequestConfirmationList/FieldAutoSelector';
-import useConfirmationAmount from './MoneyRequestConfirmationList/hooks/useConfirmationAmount';
+    const [policyDraftTags] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_TAGS_DRAFT}${props.policyID}`);
+    const [policyDraftCategories] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES_DRAFT}${props.policyID}`);
+    const [draftTransaction] = useOnyx(ONYXKEYS.IOU_DRAFT_TRANSACTION);
+    const [iouRequestType] = useOnyx(ONYXKEYS.IOU_REQUEST_TYPE);
+
+    const [isConfirmed, setIsConfirmed] = useState(false);
+
 import useConfirmationCtaText from './MoneyRequestConfirmationList/hooks/useConfirmationCtaText';
-import useConfirmationSections from './MoneyRequestConfirmationList/hooks/useConfirmationSections';
-import useConfirmationValidation from './MoneyRequestConfirmationList/hooks/useConfirmationValidation';
-import useDistanceRequestState from './MoneyRequestConfirmationList/hooks/useDistanceRequestState';
-    getTagLists,
-    getTagListName,
-    isMultiLevelTags,
-    getTagListNameByKey,
-} from '@libs/PolicyUtils';
-import type {PolicyTagLists} from '@libs/PolicyUtils';
-import {getDescription, getTagForDisplay} from '@libs/TransactionUtils';
+        () => ({
+            ...props,
+            policy,
+            betas,
+            personalDetails,
+            session,
+            splitSelectedParticipants,
+import useSplitParticipants from './MoneyRequestConfirmationList/hooks/useSplitParticipants';
+import useTaxAmount from './MoneyRequestConfirmationList/hooks/useTaxAmount';
 import useTransactionReportForConfirmation from './MoneyRequestConfirmationList/hooks/useTransactionReportForConfirmation';
 import SplitBillController from './MoneyRequestConfirmationList/SplitBillController';
 import TaxController from './MoneyRequestConfirmationList/TaxController';
 import MoneyRequestConfirmationListFooter from './MoneyRequestConfirmationListFooter';
 import BareUserListItem from './SelectionList/ListItem/BareUserListItem';
 import SelectionListWithSections from './SelectionList/SelectionListWithSections';
+            draftTransaction,
+            iouRequestType,
+        }),
+        [props, policy, betas, personalDetails, session, splitSelectedParticipants, iouCustomUnit, lastSelectedDistanceRates, policyCategories, policyTags, policyDraftTags, policyDraftCategories, draftTransaction, iouRequestType],
+    );
 
-type MoneyRequestConfirmationListProps = {
-    /** Callback to inform parent modal of success */
-    onConfirm?: (selectedParticipants?: Participant[]) => void;
-
-    /** When set, used in the new manual expense flow to open the parent-owned participant picker instead of navigating away */
-    onOpenParticipantPicker?: () => void;
+    return (
 
     /** Whether the parent-owned participant picker modal is currently open (new manual expense flow). Drives amount autofocus on picker close. */
     isParticipantPickerVisible?: boolean;
-
-    /** Callback to parent modal to pay someone */
-    onSendMoney?: (paymentMethod: PaymentMethodType | undefined) => void;
-
-    /** IOU type */
-    iouType?: Exclude<IOUType, typeof CONST.IOU.TYPE.REQUEST | typeof CONST.IOU.TYPE.SEND>;
-
+            isConfirmed={isConfirmed}
+            setIsConfirmed={setIsConfirmed}
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            {...rest}
+        />
+    );
+}
     /** Callback to toggle the billable state */
     onToggleBillable?: (isOn: boolean) => void;
 
@@ -486,13 +484,13 @@ function MoneyRequestConfirmationList({
         onConfirm,
         onSendMoney,
     });
-            const isTagRequired = tagList.required;
-            const isTagDisabled = isReadonly || !shouldShowTag;
-            const tagError = getErrorForField('tag', {tagIndex});
-            const tagListName = getTagListNameByKey(policyTagList, tagList.orderName ?? tagList.name) ?? getTagListName(policyTagList, tagIndex);
 
-            return (
-                <MenuItemWithTopDescription
+    const isCompactMode = !showMoreFields && isScanRequest && !isInLandscapeMode;
+    const selectionListStyle = {
+        containerStyle: [styles.flexBasisAuto],
+        contentContainerStyle: isCompactMode ? [styles.flexGrow1] : undefined,
+        listFooterContentStyle: isCompactMode ? [styles.flex1, styles.mv3] : [styles.mv3],
+    };
 
     const footerContent = isReadOnly ? undefined : (
         <ConfirmationFooterContent
