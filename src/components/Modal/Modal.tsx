@@ -1,34 +1,26 @@
 import React, {useEffect, useRef} from 'react';
 import {useHistory} from 'react-router-dom';
-import {View} from 'react-native';
+import {Modal as RNModal} from 'react-native';
 import type {ModalProps} from './types';
 
-    const isVisibleRef = useRef(isVisible);
-    const onModalHideRef = useRef(onModalHide);
-    const onSwipeCompleteRef = useRef(onSwipeComplete);
+    ...rest
+}: ModalProps) {
+    const wasVisible = useRef(false);
     const history = useHistory();
 
     useEffect(() => {
-        isVisibleRef.current = isVisible;
-        };
-    }, []);
-
-    // Handle browser back button to close modal and prevent unclickable UI
-    useEffect(() => {
-        if (!isVisible) {
+        if (!visible) {
             return;
         }
-
-        const unblock = history.block(() => {
-            // Close the modal when user navigates back
-            return 'Are you sure you want to leave this page?';
+        const unlisten = history.listen(() => {
+            if (visible) {
+                onClose?.();
+            }
         });
-
         return () => {
-            unblock();
+            unlisten();
         };
-    }, [isVisible, history]);
+    }, [visible, history, onClose]);
 
-    return (
-        <View
-            // eslint-disable-next-line react/jsx-props-no-spreading
+    useEffect(() => {
+        if (visible && !wasVisible.current) {
