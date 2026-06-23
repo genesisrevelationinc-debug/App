@@ -1,16 +1,79 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import useStyleUtils from '@hooks/useStyleUtils';
-import useTheme from '@hooks/useTheme';
-import StatusBar from '@libs/StatusBar';
+import React, {useEffect, useRef} from 'react';
+import {Modal as RNModal} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {ModalProps} from './types';
+
+function Modal({
 import CONST from '@src/CONST';
 import BaseModal from './BaseModal';
+import {withInternalPopstate} from './internalPopstateGuard';
 import type BaseModalProps from './types';
 import type {WindowState} from './types';
+
+type WebModalAnimation = Pick<BaseModalProps, 'animationIn' | 'animationOut' | 'animationInTiming' | 'animationOutTiming'>;
+
+    ...rest
+}: ModalProps) {
+    const wasVisible = useRef(false);
+    const navigation = useNavigation();
+
+    useEffect(() => {
+        if (!visible) {
+            return;
+        }
+        const unsubscribe = navigation?.addListener('beforeRemove', (e) => {
+            if (visible) {
+                e.preventDefault();
+                onClose?.();
+            }
+        });
+        return () => {
+            unsubscribe?.();
+        };
+    }, [visible, navigation, onClose]);
+
+    useEffect(() => {
+        if (visible && !wasVisible.current) {
+]);
+
+// Faster timing and slide-and-fade are desktop-only; narrow web keeps the full-slide baseline at the original 300/200 timing.
+function getWebModalAnimation(type: BaseModalProps['type'], isSmallScreenWidth: boolean): WebModalAnimation {
+    const isRightDocked = type === CONST.MODAL.MODAL_TYPE.RIGHT_DOCKED;
+    const isCentered = CENTERED_MODAL_TYPES.has(type);
+    if (!isRightDocked && !isCentered) {
+        return {};
+    }
+    const isFadeOnlyCentered = type === CONST.MODAL.MODAL_TYPE.CONFIRM || type === CONST.MODAL.MODAL_TYPE.CENTERED_SMALL;
+    if (isSmallScreenWidth && !isFadeOnlyCentered) {
+        return {
+            animationInTiming: CONST.MODAL.ANIMATION_TIMING.NARROW_SLIDE_DURATION_IN_WEB,
+            animationOutTiming: CONST.MODAL.ANIMATION_TIMING.NARROW_SLIDE_DURATION_OUT_WEB,
+        };
+    }
+    if (isRightDocked) {
+        return {
+            animationIn: 'slideAndFadeInRight',
+            animationOut: 'slideAndFadeOutRight',
+            animationInTiming: CONST.MODAL.ANIMATION_TIMING.RHP_DURATION_IN_WEB,
+            animationOutTiming: CONST.MODAL.ANIMATION_TIMING.RHP_DURATION_OUT_WEB,
+        };
+    }
+    return {
+        animationInTiming: CONST.MODAL.ANIMATION_TIMING.CENTERED_DURATION_IN_WEB,
+        animationOutTiming: CONST.MODAL.ANIMATION_TIMING.CENTERED_DURATION_OUT_WEB,
+    };
+}
 
 function Modal({fullscreen = true, onModalHide = () => {}, type, onModalShow = () => {}, children, shouldHandleNavigationBack, ...rest}: BaseModalProps) {
     const theme = useTheme();
     const StyleUtils = useStyleUtils();
+    // We gate the web animation on raw screen width (desktop vs mobile web) rather than shouldUseNarrowLayout,
+    // because a modal opened on top of an RHP on desktop must keep its desktop animation, not the narrow one.
+    // eslint-disable-next-line rulesdir/prefer-shouldUseNarrowLayout-instead-of-isSmallScreenWidth
+    const {isSmallScreenWidth} = useResponsiveLayout();
     const [previousStatusBarColor, setPreviousStatusBarColor] = useState<string>();
+
+    const webAnimation = getWebModalAnimation(type, isSmallScreenWidth);
 
     const setStatusBarColor = (color = theme.appBG) => {
         if (!fullscreen) {
@@ -46,8 +109,17 @@ function Modal({fullscreen = true, onModalHide = () => {}, type, onModalShow = (
     const hideModal = () => {
         window.removeEventListener('popstate', handlePopState);
         if ((window.history.state as WindowState)?.shouldGoBack && shouldHandleNavigationBack) {
-            window.addEventListener('popstate', onModalHide, {once: true});
-            window.history.back();
+            onModalHide();
+            // Defer history.back() so it runs after any pending navigation
+            // callbacks (from onModalDidClose) have pushed their history entries.
+            // This prevents the popstate from undoing navigations triggered by
+            // menu item selection callbacks.
+            setTimeout(() => {
+                if (!(window.history.state as WindowState)?.shouldGoBack) {
+                    return;
+                }
+                withInternalPopstate(() => window.history.back());
+            }, 0);
         } else {
             onModalHide();
         }
@@ -55,7 +127,11 @@ function Modal({fullscreen = true, onModalHide = () => {}, type, onModalShow = (
 
     const showModal = () => {
         if (shouldHandleNavigationBack) {
-            window.history.pushState({shouldGoBack: true}, '', null);
+            // Preserve React Navigation's state in the guard entry so that if
+            // popstate fires for this entry, RN recognizes the current route
+            // and does not perform an unexpected back navigation.
+            const currentState = (window.history.state ?? {}) as WindowState;
+            window.history.pushState({...currentState, shouldGoBack: true}, '', null);
             window.addEventListener('popstate', handlePopState);
         }
         onModalShow?.();
@@ -92,8 +168,11 @@ function Modal({fullscreen = true, onModalHide = () => {}, type, onModalShow = (
 
     return (
         <BaseModal
-            // eslint-disable-next-line react/jsx-props-no-spreading
             {...rest}
+            animationIn={rest.animationIn ?? webAnimation.animationIn}
+            animationOut={rest.animationOut ?? webAnimation.animationOut}
+            animationInTiming={rest.animationInTiming ?? webAnimation.animationInTiming}
+            animationOutTiming={rest.animationOutTiming ?? webAnimation.animationOutTiming}
             onModalHide={hideModal}
             onModalShow={showModal}
             onModalWillShow={onModalWillShow}
