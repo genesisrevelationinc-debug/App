@@ -1,9 +1,9 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {View} from 'react-native';
+import React, {useEffect, useRef, useCallback} from 'react';
 import {useHistory} from 'react-router-dom';
-import ReactNativeModal from 'react-native-modal';
-import type {OnyxEntry} from 'react-native-onyx';
-import {useOnyx} from 'react-native-onyx';
+import {View, Modal as RNModal} from 'react-native';
+import type {BaseModalProps} from './types';
+
+import {Animated, View} from 'react-native';
 import ColorSchemeWrapper from '@components/ColorSchemeWrapper';
 import NavigationBar from '@components/NavigationBar';
 import {PressableWithoutFeedback} from '@components/Pressable';
@@ -13,12 +13,27 @@ import useKeyboardState from '@hooks/useKeyboardState';
 import useLocalize from '@hooks/useLocalize';
 import usePrevious from '@hooks/usePrevious';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
-import useSafeAreaInsets from '@hooks/useSafeAreaInsets';
-import useSidePanelState from '@hooks/useSidePanelState';
-import useStyleUtils from '@hooks/useStyleUtils';
-import useTheme from '@hooks/useTheme';
-import useThemeStyles from '@hooks/useThemeStyles';
-import useWindowDimensions from '@hooks/useWindowDimensions';
+}: BaseModalProps) {
+    const wasVisible = useRef(false);
+    const modalRef = useRef<RNModal>(null);
+    const history = useHistory();
+
+    useEffect(() => {
+        if (!isVisible) {
+            return;
+        }
+        const unlisten = history.listen(() => {
+            if (isVisible && onClose) {
+                onClose();
+            }
+        });
+        return () => {
+            unlisten();
+        };
+    }, [isVisible, history, onClose]);
+
+    useEffect(() => {
+        if (isVisible && !wasVisible.current) {
 import ComposerFocusManager from '@libs/ComposerFocusManager';
 import {canUseTouchScreen as canUseTouchScreenCheck} from '@libs/DeviceCapabilities';
 import NarrowPaneContext from '@libs/Navigation/AppNavigator/Navigators/NarrowPaneContext';
@@ -45,13 +60,12 @@ function BaseModal({
     fullscreen = true,
     animationIn,
     animationOut,
-    const {isSmallScreenWidth} = useWindowDimensions();
-    const {isSafari} = useBrowserEnvironment();
-    const wasVisible = usePrevious(isVisible);
-    const history = useHistory();
-
-    const [isVisibleValue, setIsVisibleValue] = useState(isVisible);
-
+    hideModalContentWhileAnimating = false,
+    animationInTiming,
+    animationOutTiming,
+    animationInDelay,
+    statusBarTranslucent = true,
+    navigationBarTranslucent = true,
     onLayout,
     avoidKeyboard = false,
     children,
@@ -180,34 +194,12 @@ function BaseModal({
         },
 
         [],
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isVisible]);
+    );
 
-    // Handle browser back button when modal is open to prevent unclickable UI
-    useEffect(() => {
-        if (!isVisible) {
-            return;
+    const handleShowModal = useCallback(() => {
+        if (shouldSetModalVisibility) {
+            setModalVisibility(true, type);
         }
-
-        // Push a new history entry so back button can be captured
-        history.push(history.location.pathname + history.location.search + history.location.hash);
-
-        const handlePopState = () => {
-            // Close the modal when back button is pressed
-            onClose?.();
-        };
-
-        // Listen for popstate events (back/forward buttons)
-        window.addEventListener('popstate', handlePopState);
-
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, [isVisible, history, onClose]);
-
-    const hideModal = useCallback(
-        (callOnClose?: boolean) => {
-            setIsVisibleValue(false);
         onModalShow();
     }, [onModalShow, shouldSetModalVisibility, type]);
 
