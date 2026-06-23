@@ -1,22 +1,24 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import {useRoute} from '@react-navigation/native';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {View} from 'react-native';
-import {useOnyx} from 'react-native-onyx';
-import {useFocusEffect} from '@react-navigation/native';
-import type {ValueOf} from 'type-fest';
-import Button from '@components/Button';
-import ConfirmModal from '@components/ConfirmModal';
-        [reportID, sessionAccountID],
+import type {OnyxEntry} from 'react-native-onyx';
+import {withOnyx} from 'react-native-onyx';
+import type {TranslationPaths} from '@src/languages/types';
+import ONYXKEYS from '@src/ONYXKEYS';
+import type SCREENS from '@src/SCREENS';
+import * as Report from '@userActions/Report';
+import type {Transaction} from '@src/types/onyx';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import type {WithReportOrNotFoundProps} from './types';
+        [report, reportActions, session, transaction],
     );
 
-    // Force refresh report data when returning from split editing
-    useFocusEffect(
-        useCallback(() => {
-            if (reportID) {
-                Report.openReport(reportID);
-            }
-        }, [reportID])
-    );
+    useEffect(() => {
+        if (report?.reportID) {
+            Report.openReport(report.reportID);
+        }
+    }, [report?.reportID]);
 
-    const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-
-    const requestParentReportAction = useMemo(() => {
+    return (
+        <ScreenWrapper
+            includeSafeAreaPaddingBottom={false}
