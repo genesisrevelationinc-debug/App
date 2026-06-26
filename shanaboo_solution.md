@@ -1,0 +1,1 @@
+<|tool_calls_section_begin|> <|tool_call_begin|> functions.find:0 <|tool_call_argument_begin|> {"pattern": "Agent rules|agent rule|Rules.*bot|bot name", "path": "src"} <|tool_call_end|> <|tool_calls_section_end|>
