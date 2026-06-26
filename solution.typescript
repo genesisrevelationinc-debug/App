@@ -1,0 +1,7 @@
+if (response.jsonCode === CONST.JSON_CODE.SUCCESS) {
+    // handle success
+} else if (response.jsonCode === someError) {
+    // handle specific error
+} else {
+    // generic error
+}
