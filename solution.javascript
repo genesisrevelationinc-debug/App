@@ -1,1 +1,1 @@
-const hasViolations = useMemo(() => checkViolations(transaction, policy), [transaction, policy]);
+const violations = useSelector(state => getViolations(state, transactionId));
