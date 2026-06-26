@@ -1,7 +1,5 @@
-if (response.jsonCode === CONST.JSON_CODE.SUCCESS) {
-    // handle success
-} else if (response.jsonCode === someError) {
-    // handle specific error
+if (response.status === 200) {
+    // success
 } else {
-    // generic error
+    // show generic error
 }
