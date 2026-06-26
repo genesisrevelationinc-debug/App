@@ -1,8 +1,8 @@
 import React from 'react';
-import useAnimatedHighlightStyle from '@hooks/useAnimatedHighlightStyle';
-import useTheme from '@hooks/useTheme';
-import MenuItem from './MenuItem';
-import type {MenuItemProps} from './MenuItem';
+import type {GestureResponderEvent, StyleProp, ViewStyle, ReactNode} from 'react-native';
+import {View} from 'react-native';
+import type {SvgProps} from 'react-native-svg';
+import Icon from '@components/Icon';
 
 type MenuItemWithTopDescriptionProps = MenuItemProps & {
     /** Should the menu item be highlighted? */
@@ -12,14 +12,13 @@ type MenuItemWithTopDescriptionProps = MenuItemProps & {
 function MenuItemWithTopDescription({highlighted, outerWrapperStyle, ref, ...props}: MenuItemWithTopDescriptionProps) {
     const theme = useTheme();
     const highlightedOuterWrapperStyle = useAnimatedHighlightStyle({
-        shouldHighlight: highlighted ?? false,
-        highlightColor: theme.messageHighlightBG,
-        itemEnterDelay: 0,
-    });
+    description: string;
 
-    return (
-        <MenuItem
-            // eslint-disable-next-line react/jsx-props-no-spreading
+    /** Title to display */
+    title?: string | ReactNode;
+
+    /** Icon to display */
+    icon?: React.FC<SvgProps>;
             {...props}
             ref={ref}
             shouldShowBasicTitle
