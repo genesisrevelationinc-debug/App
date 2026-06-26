@@ -1,7 +1,6 @@
-
-import type {OnyxCollection, OnyxEntry, OnyxUpdate} from 'react-native-onyx';
-import Onyx from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
+import {Str} from 'expensify-common';
+import type {OnyxCollection, OnyxEntry} from 'react-native-onyx';
+import type {TupleToUnion, ValueOf} from 'type-fest';
 import type {LocaleContextProps, LocalizedTranslate} from '@components/LocaleContextProvider';
 import type {SelectorType} from '@components/SelectionScreen';
 import CONST from '@src/CONST';
@@ -48,14 +47,13 @@ import addEncryptedAuthTokenToURL from './addEncryptedAuthTokenToURL';
 import {getApiRoot} from './ApiUtils';
 import {getCategoryApproverRule} from './CategoryUtils';
 import {convertToBackendAmount} from './CurrencyUtils';
-import {isAnyHRConnected} from './HRUtils';
+import {isAnyHRConnected, isMergeHRCompleteSetupNeeded} from './HRUtils';
 import Navigation from './Navigation/Navigation';
 import {getIsOffline} from './NetworkState';
 import {formatMemberForList} from './OptionsListUtils';
 import type {MemberForList} from './OptionsListUtils';
-import {getAccountIDsByLogins, getKnownAccountIDByLogin, getLoginByAccountID, getLoginsByAccountIDs, getPersonalDetailByEmail} from './PersonalDetailsUtils';
+import {getAccountIDsByLogins, getLoginByAccountID, getLoginsByAccountIDs, getPersonalDetailByEmail} from './PersonalDetailsUtils';
 import {getAllSortedTransactions, getCategory, getTag, getTagArrayFromName} from './TransactionUtils';
-import {generateAccountID} from './UserUtils';
 import {isPublicDomain, isValidAccountRoute} from './ValidationUtils';
 
 type MemberEmailsToAccountIDs = Record<string, number>;
@@ -121,20 +119,36 @@ function getActivePoliciesWithExpenseChatAndPerDiemEnabledAndHasRates(policies: 
         const perDiemCustomUnit = getPerDiemCustomUnit(policy);
         return policy?.arePerDiemRatesEnabled && isControlPolicy(policy) && !isEmptyObject(perDiemCustomUnit?.rates);
     });
-    PolicyReportField,
-    PolicyTag,
-    PolicyTagList,
-    PolicyTags,
-    PolicyTaxRate,
-    RecentlyUsedCategories,
-    Report,
+}
+    return policyTagLists;
+}
+
 /**
-    TaxRate,
-    Transaction,
-} from '@src/types/onyx';
-import {isEmptyObject} from '@src/types/utils/EmptyObject';
-import type {Option} from '@src/types/onyx/SearchResults';
-import type {SearchPolicyExpenseChat, SearchTransaction} from '@src/types/onyx/SearchResults';
+ * Get a specific tag list by its name from the policy
+ */
+function getTagListByName(policy: OnyxEntry<Policy>, policyTags: OnyxEntry<PolicyTagList>, tagListName: string): TagList | undefined {
+    const policyTagLists = getTagListsForPolicy(policy, policyTags);
+    return policyTagLists.find((tagList) => tagList.name === tagListName);
+}
+
+/**
+ * Get a specific tag list by its index from the policy
+ */
+function getTagListByIndex(policy: OnyxEntry<Policy>, policyTags: OnyxEntry<PolicyTagList>, index: number): TagList | undefined {
+    const policyTagLists = getTagListsForPolicy(policy, policyTags);
+    return policyTagLists.at(index);
+}
+
+/**
+ * Check if the policy has dependent tags (multi-level tags with dependencies)
+ */
+ * Checks if the current user is an admin of the policy.
+ */
+const isPolicyAdmin = (policy: OnyxInputOrEntry<Policy>, login?: string, shouldCheckGlobalPolicyRole = true): boolean =>
+    getPolicyRole(policy, login, shouldCheckGlobalPolicyRole) === CONST.POLICY.ROLE.ADMIN;
+
+const WRITE_ALL_POLICY_FEATURES = Object.fromEntries(Object.values(CONST.POLICY.POLICY_FEATURE).map((feature) => [feature, CONST.POLICY.POLICY_FEATURE_ACCESS.WRITE])) as Record<
+    PolicyFeature,
     PolicyFeatureAccess
 >;
 
@@ -455,12 +469,14 @@ function getCustomUnitsForDuplication(
     const getUnitWithoutPendingDeleteRates = (customUnit: CustomUnit | undefined, customUnitID: string) => {
         if (!customUnit) {
             return undefined;
-        }
-        return {
-            ...customUnit,
-            customUnitID,
-            rates: Object.fromEntries(Object.entries(customUnit.rates).filter(([, rate]) => rate.pendingAction !== CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE)),
-        };
+    getTagListsForPolicy,
+    hasDependentTags,
+    getTagListName,
+    getTagListByName,
+    getTagListByIndex,
+    getCleanedTagName,
+    getCountOfEnabledTagsOfList,
+    isMultiLevelTags,
     };
 
     const distanceCustomUnit = getUnitWithoutPendingDeleteRates(
@@ -539,6 +555,11 @@ function getPolicyBrickRoadIndicatorStatus(policy: OnyxEntry<Policy>, isConnecti
     }
     return undefined;
 }
+
+/**
+ * Returns whether the Merge HR setup still needs to be completed for a policy.
+ */
+const isMergeHRCompleteSetupNeededSelector = (policy: OnyxEntry<Policy>) => isMergeHRCompleteSetupNeeded(policy);
 
 function getPolicyRole(policy: OnyxInputOrEntry<Policy>, currentUserLogin?: string, shouldCheckGlobalPolicyRole = true): string | undefined {
     if (shouldCheckGlobalPolicyRole && policy?.role) {
@@ -621,35 +642,12 @@ function getUberConnectionErrorDirectlyFromPolicy(policy: OnyxEntry<Policy>) {
     return !!receiptUber?.error;
 }
 
-    return policyTagList?.[tagListKey]?.name ?? '';
+function isExpensifyTeam(email: string | undefined): boolean {
+    const emailDomain = Str.extractEmailDomain(email ?? '');
+    return emailDomain === CONST.EXPENSIFY_PARTNER_NAME || emailDomain === CONST.EMAIL.GUIDES_DOMAIN;
 }
 
-/**
- * Get the name of a tag list by its key
- */
-function getTagListNameByKey(policyTagList: OnyxEntry<PolicyTagList>, tagListKey: string): string {
-    return policyTagList?.[tagListKey]?.name ?? '';
-}
-
-/**
- * Get the ordered tag list keys for a policy
- */
-function getOrderedTagListKeys(policyTagList: OnyxEntry<PolicyTagList>): string[] {
-    if (!policyTagList) {
-        return [];
-    }
-    return Object.keys(policyTagList)
-        .filter((key) => key !== 'undefined' && key !== 'null')
-        .sort((a, b) => {
-            const orderA = policyTagList[a]?.order ?? 0;
-            const orderB = policyTagList[b]?.order ?? 0;
-            return orderA - orderB;
-        });
-}
-
-/**
- * Cleans up escaping of backslashes in the regex pattern
- */
+/** Whether Expensify team members should be hidden from the given policy/user combination. */
 function shouldFilterExpensifyTeam(policyOwner: string | undefined, currentUserLogin: string | undefined): boolean {
     return !!policyOwner && !!currentUserLogin && !isExpensifyTeam(policyOwner) && !isExpensifyTeam(currentUserLogin);
 }
@@ -737,56 +735,6 @@ function getMemberAccountIDsForWorkspace(employeeList: PolicyEmployeeList | unde
         memberEmailsToAccountIDs[email] = Number(personalDetail.accountID);
     }
     return memberEmailsToAccountIDs;
-}
-
-/**
- * Resolves the accountID for a submit-to recipient chosen in the submit-to popover.
- * Uses personal details first, then the workspace employee list (same source as ReportSubmitToContent).
- * When the member is in employeeList but not yet in personal details, returns a stable optimistic accountID.
- */
-function getAccountIDForSubmitManagerEmail(managerEmail: string | undefined, employeeList: PolicyEmployeeList | undefined): number | undefined {
-    const trimmed = managerEmail?.trim();
-    if (!trimmed) {
-        return undefined;
-    }
-
-    const fromPersonalDetails = getKnownAccountIDByLogin(trimmed);
-    if (fromPersonalDetails !== undefined) {
-        return fromPersonalDetails;
-    }
-
-    if (!employeeList) {
-        return undefined;
-    }
-
-    const normalizedEmail = trimmed.toLowerCase();
-    const memberAccountIDs = getMemberAccountIDsForWorkspace(employeeList, true, false);
-
-    for (const [email, accountID] of Object.entries(memberAccountIDs)) {
-        if (email.toLowerCase() === normalizedEmail) {
-            return accountID;
-        }
-    }
-
-    for (const [listKey, employee] of Object.entries(employeeList)) {
-        const employeeEmail = (employee.email ?? listKey).trim();
-        const listKeyNormalized = listKey.trim().toLowerCase();
-        const employeeEmailNormalized = employeeEmail.toLowerCase();
-
-        if (employeeEmailNormalized !== normalizedEmail && listKeyNormalized !== normalizedEmail) {
-            continue;
-        }
-
-        const accountIDFromMap = memberAccountIDs[employeeEmail] ?? memberAccountIDs[listKey];
-
-        if (accountIDFromMap !== undefined) {
-            return accountIDFromMap;
-        }
-
-        return generateAccountID(trimmed);
-    }
-
-    return undefined;
 }
 
 /**
@@ -1040,14 +988,12 @@ function hasConfiguredRules(policy: OnyxEntry<Policy>): boolean {
     ) {
         return true;
     }
-    getTagLists,
-    getTagList,
-    getTagListName,
-    getTagListNameByKey,
-    getOrderedTagListKeys,
-    getCleanedTagName,
-    getCountOfEnabledTagsOfList,
-    isMultiLevelTags,
+
+    if (policy.defaultBillable) {
+        return true;
+    }
+    if (policy.defaultReimbursable === false) {
+        return true;
     }
     if (policy.eReceipts) {
         return true;
@@ -1642,7 +1588,7 @@ function getSubmitToAccountID(policy: OnyxEntry<Policy>, expenseReport: OnyxEntr
     return getManagerAccountID(policy, expenseReport);
 }
 
-function getSubmitReportManagerAccountID(policy: OnyxEntry<Policy>, expenseReport: OnyxEntry<Report>): number | undefined {
+function getSubmitReportManagerAccountID(policy: OnyxEntry<Policy>, expenseReport: OnyxEntry<Report>, submitterLogin: string | undefined): number | undefined {
     const ownerAccountID = expenseReport?.ownerAccountID ?? CONST.DEFAULT_NUMBER_ID;
     const existingManagerID = expenseReport?.managerID;
     const approvalRules = policy?.rules?.approvalRules;
@@ -1650,11 +1596,10 @@ function getSubmitReportManagerAccountID(policy: OnyxEntry<Policy>, expenseRepor
     const submitToAccountID = ruleApprover ? (getAccountIDsByLogins([ruleApprover]).at(0) ?? -1) : getManagerAccountID(policy, expenseReport);
     const isValidSubmitToAccountID = isValidAccountRoute(submitToAccountID);
     const isValidExistingManagerID = isValidAccountRoute(existingManagerID ?? CONST.DEFAULT_NUMBER_ID) && existingManagerID !== ownerAccountID;
-    const employeeLogin = getLoginByAccountID(ownerAccountID) ?? '';
     const hasReliablePolicyRoute =
         ([CONST.POLICY.APPROVAL_MODE.OPTIONAL, CONST.POLICY.APPROVAL_MODE.BASIC] as Array<ValueOf<typeof CONST.POLICY.APPROVAL_MODE>>).includes(getApprovalWorkflow(policy)) ||
         !!ruleApprover ||
-        !!policy?.employeeList?.[employeeLogin];
+        !!policy?.employeeList?.[submitterLogin ?? ''];
 
     if (hasReliablePolicyRoute && isValidSubmitToAccountID) {
         return submitToAccountID;
@@ -1670,24 +1615,6 @@ function getSubmitReportManagerAccountID(policy: OnyxEntry<Policy>, expenseRepor
 function getManagerAccountEmail(policy: OnyxEntry<Policy>, expenseReport: OnyxEntry<Report>): string {
     const managerAccountID = getManagerAccountID(policy, expenseReport);
     return getLoginsByAccountIDs([managerAccountID]).at(0) ?? '';
-}
-
-/**
- * Returns the email the expense report should submit to per workspace approval config
- * (approval rules, employee submitsTo, or default approver for basic/optional workflows).
- */
-function getSubmitToEmail(policy: OnyxEntry<Policy>, expenseReport: OnyxEntry<Report>): string {
-    const defaultApprover = getDefaultApprover(policy).trim();
-    if (!expenseReport) {
-        return defaultApprover;
-    }
-
-    const submitToAccountID = getSubmitToAccountID(policy, expenseReport);
-    if (!isValidAccountRoute(submitToAccountID)) {
-        return defaultApprover;
-    }
-
-    return getLoginsByAccountIDs([submitToAccountID]).at(0)?.trim() ?? defaultApprover;
 }
 
 /**
@@ -2672,7 +2599,6 @@ export {
     getIneligibleInvitees,
     getExcludedUsers,
     getMemberAccountIDsForWorkspace,
-    getAccountIDForSubmitManagerEmail,
     getGuideAndAccountManagerInfo,
     getSoftExclusionsForGuideAndAccountManager,
     getExpensifyTeamExclusions,
@@ -2807,7 +2733,6 @@ export {
     hasOtherControlWorkspaces,
     shouldBlockWorkspaceDeletionForInvoicifyUser,
     getManagerAccountEmail,
-    getSubmitToEmail,
     getRuleApprovers,
     canModifyPlan,
     getAdminsPrivateEmailDomains,
@@ -2841,6 +2766,7 @@ export {
     isSubmitPolicy,
     isSubmitterApproveBlockedOnSubmitWorkspace,
     hasAnyPaidPolicy,
+    isMergeHRCompleteSetupNeededSelector,
 };
 
 export type {MemberEmailsToAccountIDs, PolicyFeature, PolicyFeatureAccess};
