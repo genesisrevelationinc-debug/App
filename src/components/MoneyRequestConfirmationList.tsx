@@ -1,4 +1,4 @@
-// Actual fix would be here
+import {useIsFocused} from '@react-navigation/native';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {View} from 'react-native';
 import type {OnyxEntry} from 'react-native-onyx';
@@ -120,20 +120,22 @@ type MoneyRequestConfirmationListProps = {
     isPerDiemRequest?: boolean;
 
     /** Whether the expense is a time expense */
-    isTimeRequest?: boolean;
-
-    /** Whether we're editing a split expense */
-    isEditingSplitBill?: boolean;
-
-    /** Whether we can navigate to receipt page */
+import type {TransactionDetails} from '@src/types/onyx/Transaction';
+import type {PaymentMethodType} from '@src/types/onyx/Transaction';
+import type {Participant} from '@src/types/onyx/IOU';
+import type {TagList} from '@src/types/onyx/Policy';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import {getIOURequestPolicyID} from '@src/types/onyx/utils/TransactionUtils';
+import {getPolicy} from '@src/libs/PolicyUtils';
     shouldDisplayReceipt?: boolean;
 
-    /** Whether we should show the amount, date, and merchant fields. */
-    shouldShowSmartScanFields?: boolean;
+import {getTagNames} from '@src/libs/TransactionUtils';
+import {getTagListsForPolicy} from '@src/libs/PolicyUtils';
+import {getTagForDisplay} from '@src/libs/TransactionUtils';
+import {getTagListByName} from '@src/libs/PolicyUtils';
 
-    /** A flag for verifying that the current report is a sub-report of a expense chat */
-    isPolicyExpenseChat?: boolean;
-
+type MoneyRequestConfirmationListProps = {
+    /** Transaction ID associated with the current money request */
     /** Whether smart scan failed */
     hasSmartScanFailed?: boolean;
 
@@ -654,3 +656,55 @@ function MoneyRequestConfirmationList({
 }
 
 export default MoneyRequestConfirmationList;
+    const tagListNames = useMemo(() => getTagNames(transaction), [transaction]);
+    const policyTagLists = useMemo(() => getTagListsForPolicy(policy, policyTags), [policy, policyTags]);
+    const hasDependentTags = useMemo(() => policyTagLists.some((tagList) => tagList.orderWeight), [policyTagLists]);
+    const [selectedTagList, setSelectedTagList] = useState<TagList | undefined>();
+
+    const shouldShowTag = useMemo(() => {
+        if (!policyTagLists.length) {
+        return policyTagLists.some((tagList) => tagList.required || !!tagList.pendingAction);
+    }, [policyTagLists]);
+
+    useEffect(() => {
+        if (!hasDependentTags || !transaction?.tag) {
+            setSelectedTagList(undefined);
+            return;
+        }
+        const tagList = getTagListByName(policy, policyTags, tagListNames[0]);
+        setSelectedTagList(tagList);
+    }, [hasDependentTags, transaction?.tag, policy, policyTags, tagListNames]);
+
+    const shouldShowBillable = policy?.disabledFields?.defaultBillable ?? true;
+
+    const shouldShowTax = useMemo(() => {
+            return null;
+        }
+
+        const tagListIndex = index;
+        const tag = tagListNames.at(index);
+        const isTagRequired = tagList.required;
+        const shouldShowEmptyTag = !isTagRequired && !tag;
+            return null;
+        }
+
+        // For dependent tags, only show the tag row if the parent tag has been selected
+        if (hasDependentTags && tagListIndex > 0) {
+            const parentTagList = policyTagLists.at(tagListIndex - 1);
+            const parentTagValue = tagListNames.at(tagListIndex - 1);
+            const parentTagKey = parentTagList?.name ?? '';
+            if (!parentTagValue || !transaction?.tag?.[parentTagKey]) {
+                return null;
+            }
+        }
+
+        return (
+            <MenuItemWithTopDescription
+                key={tagList.name}
+                brickRoadIndicator={getErrorForField('tag', tagList.name) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined}
+            />
+        );
+    }, [policyTagLists, tagListNames, shouldShowTag, transaction, getErrorForField, navigateToTagPage, translate, isReadOnly, isLoadingPolicy, hasDependentTags]);
+
+    const distanceFields = useMemo(() => {
+        if (!isDistanceRequest) {
