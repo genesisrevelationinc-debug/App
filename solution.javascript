@@ -1,1 +1,1 @@
-const hasViolations = useMemo(() => checkViolations(transaction), [transaction]);
+const hasViolations = useMemo(() => checkViolations(transaction, policy), [transaction, policy]);
