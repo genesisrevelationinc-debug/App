@@ -3,141 +3,185 @@
 +++ b/src/components/MoneyRequestConfirmationList.tsx
 @@ -1,5 +1,5 @@
  import {useNavigation} from '@react-navigation/native';
--import React, {useCallback, useMemo, useRef, useState} from 'react';
-+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+-import React, {useCallback, useMemo, useState} from 'react';
++import React, {useCallback, useEffect, useMemo, useState} from 'react';
  import {View} from 'react-native';
  import type {OnyxEntry} from 'react-native-onyx';
  import {useOnyx} from 'react-native-onyx';
-@@ -123,6 +123,7 @@ import {
-     getTagNames,
-     getTagForDisplay,
-     getTagList,
-+    getTagListName,
-     getTagListUrl,
-     getTagListTitle,
-     getTagPickerID,
-@@ -131,6 +132,7 @@ import {
-     isMultiLevelTags,
-     isTagListRequired,
-     isTagRequired,
-+    getTagListIndex,
- } from '@libs/TagsOptionsListUtils';
- import {
-     convertToDisplayString,
-@@ -1022,6 +1024,7 @@ function MoneyRequestConfirmationList({
-     const tagList = useMemo(() => getTagList(policy, policyTagList, hasViolations), [policy, policyTagList, hasViolations]);
-     const isMultiLevel = isMultiLevelTags(policy, policyTagList);
-     const tagPickerID = getTagPickerID(policy, policyTagList);
-+    const [selectedTagListIndex, setSelectedTagListIndex] = useState<number | undefined>(undefined);
+@@ -7,6 +7,7 @@ import useLocalize from '@hooks/useLocalize';
+ import useNetwork from '@hooks/useNetwork';
+ import usePolicy from '@hooks/usePolicy';
+ import useThemeStyles from '@hooks/useThemeStyles';
++import * as Tag from '@libs/actions/Tag';
+ import * as CurrencyUtils from '@libs/CurrencyUtils';
+ import DistanceRequestUtils from '@libs/DistanceRequestUtils';
+ import * as OptionsListUtils from '@libs/OptionsListUtils';
+@@ -14,6 +15,7 ingroup
+ import * as PolicyUtils from '@libs/PolicyUtils';
+ import * as ReportUtils from '@libs/ReportUtils';
+ import * as TransactionUtils from '@libs/TransactionUtils';
++import type {PolicyTag, PolicyTagList, PolicyTags} from '@src/types/onyx/PolicyTag';
+ import type {Transaction} from '@src/types/onyx/Transaction';
+ import MenuItemWithTopDescription from './MenuItemWithTopDescription';
+ import type {MenuItemProps} from './MenuItem';
+@@ -22,6 +24,7 @@ import type {Unit} from './MoneyRequestConfirmationList/types';
+ import MoneyRequestConfirmationListFooter from './MoneyRequestConfirmationList/MoneyRequestConfirmationListFooter';
+ import MoneyRequestConfirmationListHeader from './MoneyRequestConfirmationList/MoneyRequestConfirmationListHeader';
+ import type {MoneyRequestConfirmationListProps} from './MoneyRequestConfirmationList/types';
++import ONYXKEYS from '@src/ONYXKEYS';
  
-     const shouldShowTag = useMemo(() => {
-         if (isReadOnly) {
-@@ -1041,6 +1044,30 @@ function MoneyRequestConfirmationList({
-         return !isTagInQuickActionFlow && (isTagRequired(policy, policyTagList) || hasMultipleTags);
-     }, [isReadOnly, isTypeInvoice, isFromGlobalCreate, iouType, policy, policyTagList, hasMultipleTags, isTagInQuickActionFlow]);
+ function MoneyRequestConfirmationList({
+     transactionID,
+@@ -41,6 +44,7 @@ function MoneyRequestConfirmationList({
+     const {isOffline} = useNetwork();
+     const policy = usePolicy(policyID);
+     const [transaction] = useOnyx<OnyxEntry<Transaction>>(`${ONYXKEYS.COLLECTION.TRANSACTION_DRAFT}${transactionID}`);
++    const [policyTags] = useOnyx<OnyxEntry<PolicyTags>>(`${ONYXKEYS.COLLECTION.POLICY_TAGS}${policyID}`);
  
-+    // Track which tag list was selected to handle dependent tags
+     const [formState, setFormState] = useState<{
+         isLoading: boolean;
+@@ -55,6 +59,30 @@ function MoneyRequestConfirmationList({
+         errorFields: {},
+     });
+ 
++    // Fetch policy tags if they haven't been loaded yet
 +    useEffect(() => {
-+        if (selectedTagListIndex === undefined) {
++        if (!policyID || policyTags) {
 +            return;
 +        }
++        Tag.getPolicyTags(policyID);
++    }, [policyID, policyTags]);
 +
-+        // Reset the selected tag list index after a short delay to allow re-selection
-+        const timeout = setTimeout(() => {
-+            setSelectedTagListIndex(undefined);
-+        }, 300);
++    // Get dependent tags that need to be shown based on parent tag selection
++    const dependentTags = useMemo(() => {
++        if (!policyTags || !transaction?.tag) {
++            return [];
++        }
++        
++        return Object.entries(policyTags).filter(([tagListKey, tagList]) => {
++            const tagListValue = tagList as PolicyTagList;
++            // Check if this tag list has a parentTagID, meaning it's a dependent tag
++            if (!tagListValue.parentTagID) {
++                return false;
++            }
++            // Check if the parent tag is selected in the transaction
++            return transaction.tag && tagListValue.parentTagID in transaction.tag;
++        });
++    }, [policyTags, transaction?.tag]);
 +
-+        return () => clearTimeout(timeout);
-+    }, [selectedTagListIndex]);
-+
-+    const handleTagPress = useCallback(
-+        (tagListIndex: number, tagListName: string) => {
-+            setSelectedTagListIndex(tagListIndex);
-+            Navigation.navigate(
-+                ROUTES.MONEY_REQUEST_STEP_TAG.getRoute(action, iouType, transactionID, reportID, tagListName, report?.reportID, Navigation.getActiveRouteWithoutParams()),
-+            );
-+        },
-+        [action, iouType, transactionID, reportID, report?.reportID],
-+    );
-+
-     const shouldShowCategories = useMemo(() => {
-         if (isReadOnly) {
-             return false;
-@@ -1688,16 +1715,12 @@ function MoneyRequestConfirmationList({
-                         return (
-                             <MenuItemWithTopDescription
-                                 key={tagListName}
--                                description={translate('common.tag')}
-+                                description={getTagListName(tagListIndex, policy, policyTagList) ?? translate('common.tag')}
-                                 title={getTagForDisplay(transaction, tagListIndex, tagListName, policy, policyTagList, shouldShowViolations)}
-                                 interactive={!isReadOnly}
-                                 shouldShowRightIcon={!isReadOnly}
-                                 titleNumberOfLines={2}
--                                onPress={() =>
--                                    Navigation.navigate(
--                                        ROUTES.MONEY_REQUEST_STEP_TAG.getRoute(action, iouType, transactionID, reportID, tagListName, report?.reportID, Navigation.getActiveRouteWithoutParams()),
--                                    )
--                                }
-+                                onPress={() => handleTagPress(tagListIndex, tagListName)}
-                                 brickRoadIndicator={getFieldViolations(tagListName) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined}
-                                 errorText={getFieldViolations(tagListName) ? translate('common.error.pleaseSelectTag') : ''}
-                                 rightComponent={
-@@ -1720,7 +1743,7 @@ function MoneyRequestConfirmationList({
-                         );
-                     }
+     const shouldShowAllFields = iouType !== CONST.IOU_TYPE.SPLIT;
  
--                    if (!isMultiLevel) {
-+                    if (!isMultiLevel || selectedTagListIndex === tagListIndex) {
-                         return (
-                             <MenuItemWithTopDescription
-                                 key={tagListName}
-@@ -1729,10 +1752,7 @@ function MoneyRequestConfirmationList({
-                                 interactive={!isReadOnly}
-                                 shouldShowRightIcon={!isReadOnly}
-                                 titleNumberOfLines={2}
--                                onPress={() =>
--                                    Navigation.navigate(
--                                        ROUTES.MONEY_REQUEST_STEP_TAG.getRoute(action, iouType, transactionID, reportID, tagListName, report?.reportID, Navigation.getActiveRouteWithoutParams()),
--                                    )
--                                }
-+                                onPress={() => handleTagPress(tagListIndex, tagListName)}
-                                 brickRoadIndicator={getFieldViolations(tagListName) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined}
-                                 errorText={getFieldViolations(tagListName) ? translate('common.error.pleaseSelectTag') : ''}
-                                 rightComponent={
-@@ -1755,6 +1775,28 @@ function MoneyRequestConfirmationList({
-                         );
-                     }
- 
-+                    // For dependent multi-level tags, check if we should show this tag list
-+                    // A tag list should be shown if all previous tag lists have a selection
-+                    const shouldShowDependentTagList = (() => {
-+                        if (!isMultiLevel) {
-+                            return true;
-+                        }
-+
-+                        // Check if all previous tag lists have a selection
-+                        for (let i = 0; i < tagListIndex; i++) {
-+                            const previousTagListName = tagList.at(i);
-+                            if (!previousTagListName) {
-+                                return false;
-+                            }
-+                            const previousTagValue = transaction?.comment?.tags?.[previousTagListName];
-+                            if (!previousTagValue) {
-+                                return false;
-+                            }
-+                        }
-+
-+                        return true;
-+                    })();
-+
-+                    if (shouldShowDependentTagList) {
-                         return (
-                             <MenuItemWithTopDescription
-                                 key={tagListName}
-@@ -1762,10 +1804,7 @@ function MoneyRequestConfirmationList({
-                                 interactive={!isReadOnly}
-                                 shouldShowRightIcon={!isReadOnly}
-                                 titleNumberOfLines={2}
--                                onPress={() =>
--                                    Navigation.navigate(
--                                        ROUTES.MONEY_REQUEST_STEP_TAG.getRoute(action, iouType, transactionID, reportID, tagListName, report?.reportID,
+     const isTypeInvoice = iouType === CONST.IOU_TYPE.INVOICE;
+@@ -72,6 +100,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -89,6 +118,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -106,6 +136,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -123,6 +154,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -140,6 +172,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -157,6 +190,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -174,6 +208,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -191,6 +226,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -208,6 +244,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -225,6 +262,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -242,6 +280,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+ /policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -259,6 +298,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -276,6 +316,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -293,6 +334,7 @@ function MoneyRequestConfirmationList({
+         transaction,
+         policy,
+         policyTags,
++        dependentTags,
+         transactionTag,
+         shouldShowAllFields,
+         isTypeInvoice,
+@@ -
