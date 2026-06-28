@@ -1,12 +1,12 @@
 import React from 'react';
-import type {StyleProp, TextStyle} from 'react-native';
+import type {TextStyle} from 'react-native';
 import Text from './Text';
 
 type TextWithEllipsisProps = {
     text: string;
 
     /** Additional text styles */
-    style?: StyleProp<TextStyle>;
+    style?: TextStyle;
 
     /** Optional testID for testing */
     testID?: string;
