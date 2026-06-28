@@ -1,24 +1,19 @@
 import React, {useCallback, useMemo, useState} from 'react';
 import {View, Text} from 'react-native';
-import type {ValueOf} from 'type-fest';
 import {useOnyx} from 'react-native-onyx';
-import type {OnyxEntry} from 'react-native-onyx';
+import type {ValueOf} from 'type-fest';
+import HeaderWithBackButton from '@components/HeaderWithBackButton';
+import type {PolicyFeatureName} from '@src/types/onyx/Policy';
+import type {Errors} from '@src/types/onyx/OnyxCommon';
+import {isEmptyObject} from '@src/types/utils/EmptyObject';
+import TextWithEllipsis from '@components/TextWithEllipsis';
+import WorkspacePageWithSections from '../WorkspacePageWithSections';
 import type {WorkspaceRulesPageProps} from './types';
-import {getRuleDescription, getRuleName, getRuleType} from './utils';
-import type {RuleType} from './types';
-import Text from '@components/Text';
 
-function WorkspaceRulesPage({route}: WorkspaceRulesPageProps) {
-    const styles = useThemeStyles();
-                                    <View style={[styles.flex1, styles.justifyContentCenter]}>
-                                        <View style={[styles.flexRow, styles.alignItemsCenter, styles.gap2]}>
-                                            <Icon src={getRuleIcon(rule)} />
-                                            <Text 
-                                                numberOfLines={1} 
-                                                style={[styles.textStrong, styles.flex1]}
-                                            >
-                                                {getRuleName(rule)}
-                                            </Text>
-                                        </View>
-                                        <Text style={[styles.textLabel, styles.mt1]}>{getRuleDescription(rule)}</Text>
-                                    </View>
+                        <View style={[styles.flex1, styles.flexRow, styles.alignItemsCenter, styles.gap2, styles.mr2]}>
+                            <Icon src={getRuleIcon(item.type)} height={20} width={20} />
+                            <View style={styles.flex1}>
+                                <TextWithEllipsis style={styles.textStrong} text={item.name} />
+                            </View>
+                        </View>
+                        <Icon src={Expensicons.ArrowRight} height={20} width={20} />
