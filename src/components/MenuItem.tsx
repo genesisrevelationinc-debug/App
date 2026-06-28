@@ -1,8 +1,8 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {InteractionManager, StyleSheet, View, Text as RNText} from 'react-native';
-import type {GestureResponderEvent, StyleProp, TextStyle, ViewStyle} from 'react-native';
-import type {ValueOf} from 'type-fest';
-import useAnimatedHighlight from '@hooks/useAnimatedHighlight';
+import type {ImageContentFit} from 'expo-image';
+import type {ReactElement, ReactNode, Ref} from 'react';
+import React, {useEffect, useMemo, useRef} from 'react';
+import type {GestureResponderEvent, Role, StyleProp, TextStyle, ViewStyle} from 'react-native';
+import {View} from 'react-native';
 import type {AnimatedStyle} from 'react-native-reanimated';
 import type {ValueOf} from 'type-fest';
 import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
