@@ -13,104 +13,108 @@ Let me look at the relevant files to understand the codebase structure and find 
  import type {OnyxEntry} from 'react-native-onyx';
  import ConfirmModal from '@components/ConfirmModal';
  import FormProvider from '@components/Form';
-@@ -9,6 +10,7 @@
+@@ -9,6 +10,7 @@ import type {FormInputErrors, FormOnyxValues} from '@components/Form/types';
+ import HeaderWithBackButton from '@components/HeaderWithBackButton';
+ import * as Expensicons from '@components/Icon/Expensicons';
+ import MenuItem from '@components/MenuItem';
++import MoneyRequestConfirmationList from '@components/MoneyRequestConfirmationList';
+ import ScreenWrapper from '@components/ScreenWrapper';
  import useLocalize from '@hooks/useLocalize';
  import useNetwork from '@hooks/useNetwork';
+@@ -16,6 +18,7 @@ import usePrevious from '@hooks/usePrevious';
  import useThemeStyles from '@hooks/useThemeStyles';
-+import usePrevious from '@hooks/usePrevious';
- import * as IOU from '@libs/actions/IOU';
+ import * as ErrorUtils from '@libs/ErrorUtils';
+ import * as IOUUtils from '@libs/IOUUtils';
++import * as MoneyRequestUtils from '@libs/MoneyRequestUtils';
  import * as OptionsListUtils from '@libs/OptionsListUtils';
- import * as PolicyUtils from '@libs/PolicyUtils';
-@@ -16,6 +18,7 @@
  import * as TransactionUtils from '@libs/TransactionUtils';
- import Navigation from '@navigation/Navigation';
+ import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
+@@ -24,6 +27,7 @@ import Navigation from '@navigation/Navigation';
+ import type {MoneyRequestNavigatorParamList} from '@navigation/types';
  import CONST from '@src/CONST';
-+import ONYXKEYS from '@src/ONYXKEYS';
- import ROUTES from '@src/ROUTES';
- import type {WithOnyxProps} from '@src/types/onyx/OnyxCommon';
- import type {Participant} from '@src/types/onyx/IOU';
-@@ -23,6 +26,7 @@
- import type {Policy, PolicyCategories, PolicyTagList, PolicyTags} from '@src/types/onyx/Policy';
- import type {Transaction} from '@src/types/onyx/Transaction';
- import type {ReceiptErrors, ReceiptSource} from '@src/types/onyx/Transaction';
-+import type {SplitShares} from '@src/types/onyx/Transaction';
- import StepScreenWrapper from './StepScreenWrapper';
- import withFullTransactionOrNotFound from './withFullTransactionOrNotFound';
- import withWritableReportOrNotFound from './withWritableReportOrNotFound';
-@@ -30,6 +34,7 @@
- type IOURequestStepConfirmationOnyxProps = {
-     /** The transaction object being modified */
-     transaction: OnyxEntry<Transaction>;
-+    splitShares: OnyxEntry<SplitShares>;
+ import ONYXKEYS from '@src/ONYXKEYS';
++import type {Participant} from '@src/types/onyx/IOU';
+ import type {Policy, PolicyCategories, PolicyTagList, RecentlyUsedCategories, RecentlyUsedTags, Transaction} from '@src/types/onyx';
+ import {isEmptyObject} from '@src/types/utils/EmptyObject';
+ import type {WithPolicyAndOnyxProps} from './withPolicyAndOnyx';
+@@ -31,6 +35,7 @@ import withPolicyAndOnyx from './withPolicyAndOnyx';
+ import type SCREENS from '@src/SCREENS';
  
-     /** The policy of the report */
-     policy: OnyxEntry<Policy>;
-@@ -45,6 +50,7 @@
+ type IOURequestStepConfirmationProps = WithPolicyAndOnyxProps & {
++    /** The participants in the money request */
++    participants: Participant[];
+ } & PlatformStackScreenProps<MoneyRequestNavigatorParamList, typeof SCREENS.MONEY_REQUEST.STEP_CONFIRMATION>;
  
- const IOURequestStepConfirmation = ({
-     transaction,
-+    splitShares,
+ function IOURequestStepConfirmation({
+@@ -38,6 +43,7 @@ function IOURequestStepConfirmation({
      policy,
-     policyTags,
      policyCategories,
-@@ -52,6 +58,8 @@
-     report,
- }: IOURequestStepConfirmationProps) => {
-     const {translate} = useLocalize();
-+    const prevSplitShares = usePrevious(splitShares);
-+    const [hasValidatedSplits, setHasValidatedSplits] = useState(false);
+     policyTagList,
++    participants,
+     recentlyUsedCategories,
+     recentlyUsedTags,
+     transaction,
+@@ -50,6 +56,7 @@ function IOURequestStepConfirmation({
      const styles = useThemeStyles();
+     const {translate} = useLocalize();
      const {isOffline} = useNetwork();
-     const [isSearchingForReports] = useOnyx(ONYXKEYS.IS_SEARCHING_FOR_REPORTS);
-@@ -59,6 +67,7 @@
-     const [didConfirm, setDidConfirm] = useState(false);
-     const [shouldShowMerchant, setShouldShowMerchant] = useState(false);
-     const [attachReceipt, setAttachReceipt] = useState(false);
-+    const [splitError, setSplitError] = useState('');
++    const [splitErrors, setSplitErrors] = useState<FormInputErrors>({});
+     const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+     const [isMerchantModalVisible, setIsMerchantModalVisible] = useState(false);
+     const [merchant, setMerchant] = useState(transaction?.merchant ?? '');
+@@ -57,6 +64,7 @@ function IOURequestStepConfirmation({
+     const [category, setCategory] = useState(transaction?.category ?? '');
+     const [tag, setTag] = useState(transaction?.tag ?? '');
+     const [receiptFile, setReceiptFile] = useState<FileObject | undefined>();
++    const prevParticipants = usePrevious(participants);
  
-     const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(report), [report]);
+     const isPolicyExpenseChat = useMemo(() => !!report?.policyID, [report?.policyID]);
      const isScanRequest = useMemo(() => TransactionUtils.isScanRequest(transaction), [transaction]);
-@@ -66,6 +75,7 @@
-     const isSplitRequest = useMemo(() => iouType === CONST.IOU.MONEY_REQUEST_TYPE.SPLIT, [iouType]);
-     const isPerDiemRequest = useMemo(() => iouType === CONST.IOU.MONEY_REQUEST_TYPE.PER_DIEM, [iouType]);
-     const isDistanceRequest = useMemo(() => TransactionUtils.isDistanceRequest(transaction), [transaction]);
-+    const isManualSplit = useMemo(() => isSplitRequest && iouRequestType === CONST.IOU.MONEY_REQUEST_TYPE.MANUAL, [isSplitRequest, iouRequestType]);
+@@ -64,6 +72,28 @@ function IOURequestStepConfirmation({
+     const isSplitRequest = iouType === CONST.IOU.MONEY_REQUEST_TYPE.SPLIT;
+     const isSendRequest = iouType === CONST.IOU.MONEY_REQUEST_TYPE.SEND;
  
-     const receiptFilename = transaction?.filename;
-     const receiptPath = transaction?.receipt?.source;
-@@ -73,6 +83,7 @@
-     const receiptSource = transaction?.receipt?.source;
-     const hasReceipt = TransactionUtils.hasReceipt(transaction);
-     const hasSmartScannedReceipt = TransactionUtils.hasSmartScannedReceipt(transaction);
-+    const splitSharesList = useMemo(() => splitShares?.data ?? [], [splitShares]);
- 
-     const policyTagList = useMemo(() => {
-         if (!isPolicyExpenseChat) {
-@@ -96,6 +107,7 @@
-         [isPolicyExpenseChat, policyCategories, policy],
-     );
- 
-+    // Validate split amounts whenever splitShares change
-     useEffect(() => {
-         if (!isSplitRequest) {
-             return;
-@@ -103,6 +115,7 @@
-         IOU.resetMoneyRequestCategory();
-         IOU.resetMoneyRequestTag();
-     }, [isSplitRequest]);
++    const validateSplit = useCallback(() => {
++        if (!isSplitRequest || !participants || participants.length === 0) {
++            return {};
++        }
++        const splitAmounts = participants.map((participant) => {
++            if (participant.isSender) {
++                return 0;
++            }
++            return participant.amount ?? 0;
++        });
++        const totalSplitAmount = splitAmounts.reduce((sum, amount) => sum + amount, 0);
++        const totalAmount = transaction?.amount ?? 0;
++        
++        if (totalSplitAmount !== totalAmount) {
++            return {
++                amount: translate('iou.error.invalidSplit'),
++            };
++        }
++        
++        return {};
++    }, [isSplitRequest, participants, transaction?.amount, translate]);
 +
      const navigateBack = useCallback(() => {
          Navigation.goBack();
      }, []);
-@@ -110,6 +123,7 @@
+@@ -71,6 +101,14 @@ function IOURequestStepConfirmation({
      const navigateToAddReceipt = useCallback(() => {
-         Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_SCAN.getRoute(CONST.IOU.ACTION.CREATE, iouType, transaction?.transactionID ?? '', report?.reportID ?? ''));
-     }, [iouType, transaction?.transactionID, report?.reportID]);
+         Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_RECEIPT.getRoute(action, iouType, transactionID, reportID));
+     }, [action, iouType, transactionID, reportID]);
 +
-     const navigateToEditRequest = useCallback(() => {
-         Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_AMOUNT.getRoute(CONST.IOU.ACTION.EDIT, iouType, transaction?.transactionID ?? '', report?.reportID ?? ''));
-     }, [iouType, transaction?.transactionID, report?.reportID]);
-@@ -117,6 +131,7 @@
++    useEffect(() => {
++        if (!isSplitRequest) {
++            return;
++        }
++        const errors = validateSplit();
++        setSplitErrors(errors);
++    }, [isSplitRequest, validateSplit, participants]);
+ 
      const navigateToParticipantPage = useCallback(() => {
-         Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_PARTICIPANTS.getRoute(iouType, transaction?.transactionID ?? '', report?.reportID ?? ''));
-    
+         if (isEmptyObject(transaction?.participants)) {
+@@ -78,6 +116,7 @@ function IOURequestStepConfirmation({
+         }
+         Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_PARTICIPANTS.getRoute(iouType, transactionID, reportID));
+     }, [iouType, transactionID, reportID, transaction?.participants
