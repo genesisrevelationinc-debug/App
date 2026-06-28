@@ -1,8 +1,8 @@
-import React, {useCallback, useMemo, useState} from 'react';
-import type {GestureResponderEvent, ReactNode, StyleProp, TextStyle, ViewStyle} from 'react-native';
-import {View} from 'react-native';
-import useStyleUtils from '@hooks/useStyleUtils';
-import useTheme from '@hooks/useTheme';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {InteractionManager, StyleSheet, View, Text as RNText} from 'react-native';
+import type {GestureResponderEvent, StyleProp, TextStyle, ViewStyle} from 'react-native';
+import type {ValueOf} from 'type-fest';
+import useAnimatedHighlight from '@hooks/useAnimatedHighlight';
 import type {AnimatedStyle} from 'react-native-reanimated';
 import type {ValueOf} from 'type-fest';
 import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
@@ -52,13 +52,13 @@ import EducationalTooltip from './Tooltip/EducationalTooltip';
 import getContextMenuAccessibilityHint from './utils/getContextMenuAccessibilityHint';
 import getContextMenuAccessibilityProps from './utils/getContextMenuAccessibilityProps';
 
-    description?: string;
+type IconProps = {
+    /** Flag to choose between avatar image or an icon */
+    iconType?: typeof CONST.ICON_TYPE_ICON;
 
-    /** The label to display */
-    label?: string | ReactNode;
-
-    /** Any additional styles to apply */
-    wrapperStyle?: StyleProp<ViewStyle>;
+    /** Icon to display on the left side of component */
+    icon: IconAsset | IconType[];
+};
 
 type AvatarProps = {
     iconType?: typeof CONST.ICON_TYPE_AVATAR | typeof CONST.ICON_TYPE_WORKSPACE | typeof CONST.ICON_TYPE_PLAID;
@@ -72,12 +72,15 @@ type NoIcon = {
     icon?: undefined;
 };
 
-type MenuItemBaseProps = ForwardedFSClassProps &
-    WithSentryLabel & {
-        /** Reference to the outer element */
-        ref?: PressableRef | Ref<View>;
+    /** Any additional styles to apply */
+    wrapperStyle?: StyleProp<ViewStyle>;
 
-        /** Function to fire when component is pressed */
+    /** Custom right component to display */
+    rightComponent?: React.ReactNode;
+
+    /** Should show the selected state */
+    isSelected?: boolean;
+
         onPress?: (event: GestureResponderEvent | KeyboardEvent) => void | Promise<void>;
 
         /** Whether the menu item should be interactive at all */
@@ -183,12 +186,13 @@ type MenuItemBaseProps = ForwardedFSClassProps &
         rightComponent?: ReactNode;
 
         /** Component to be displayed on the left */
-        leftComponent?: ReactNode;
-
-        /** A description text to show under the title */
-        description?: string;
-
-        /** Optional component to render before the description text (e.g. a badge pill) */
+        isSelected = false,
+        isDisabledButton = false,
+        isDisabledHover = false,
+        rightComponent,
+    }: MenuItemProps,
+    ref: React.ForwardedRef<View>,
+) {
         descriptionAddon?: ReactNode;
 
         /** Text to show below menu item. This text is not interactive */
@@ -381,12 +385,13 @@ type MenuItemBaseProps = ForwardedFSClassProps &
         shouldRenderTooltip?: boolean;
 
         /** Anchor alignment of the tooltip */
-        tooltipAnchorAlignment?: TooltipAnchorAlignment;
-
-        /** Additional styles for tooltip wrapper */
-        tooltipWrapperStyle?: StyleProp<ViewStyle>;
-
-        /** Any additional amount to manually adjust the horizontal position of the tooltip */
+                                                    />
+                                                </View>
+                                            )}
+                                            {rightComponent}
+                                            {shouldShowRightIcon && (
+                                                <View style={[styles.popoverMenuIcon, iconStyles, iconRightStyle]}>
+                                                    <Icon
         tooltipShiftHorizontal?: number;
 
         /** Any additional amount to manually adjust the vertical position of the tooltip */
