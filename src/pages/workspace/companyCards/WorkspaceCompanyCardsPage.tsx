@@ -1,34 +1,38 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import DecisionModal from '@components/DecisionModal';
-import useAssignCard from '@hooks/useAssignCard';
-import useCompanyCards from '@hooks/useCompanyCards';
+import type {StackScreenProps} from '@react-navigation/stack';
+import React, {useEffect, useRef, useState} from 'react';
+import {View} from 'react-native';
+import {useOnyx} from 'react-native-onyx';
+import type {ValueOf} from 'type-fest';
+import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
 import usePolicy from '@hooks/usePolicy';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
+import useWorkspaceDocumentTitle from '@hooks/useWorkspaceDocumentTitle';
 import {getDomainOrWorkspaceAccountID} from '@libs/CardUtils';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
 import type {WorkspaceSplitNavigatorParamList} from '@libs/Navigation/types';
-import {getMemberAccountIDsForWorkspace} from '@libs/PolicyUtils';
+import {canMemberWrite, getMemberAccountIDsForWorkspace} from '@libs/PolicyUtils';
 import AccessOrNotFoundWrapper from '@pages/workspace/AccessOrNotFoundWrapper';
 import WorkspacePageWithSections from '@pages/workspace/WorkspacePageWithSections';
 import {openPolicyCompanyCardsFeed, openPolicyCompanyCardsPage} from '@userActions/CompanyCards';
 import CONST from '@src/CONST';
 import type SCREENS from '@src/SCREENS';
 import isLoadingOnyxValue from '@src/types/utils/isLoadingOnyxValue';
-import WorkspaceCompanyCardsTable from './WorkspaceCompanyCardsTable';
 
 type WorkspaceCompanyCardsPageProps = PlatformStackScreenProps<WorkspaceSplitNavigatorParamList, typeof SCREENS.WORKSPACE.COMPANY_CARDS>;
 
 function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
     const policyID = route.params.policyID;
     const {translate} = useLocalize();
+    const {login: currentUserLogin = ''} = useCurrentUserPersonalDetails();
     const memoizedIllustrations = useMemoizedLazyIllustrations(['CompanyCard']);
     const {shouldUseNarrowLayout} = useResponsiveLayout();
 
     const policy = usePolicy(policyID);
-    const workspaceAccountID = policy?.workspaceAccountID ?? CONST.DEFAULT_NUMBER_ID;
+    useWorkspaceDocumentTitle(policy?.name, 'workspace.common.companyCards');
+    const workspaceAccountID = policy?.policyAccountID ?? CONST.DEFAULT_NUMBER_ID;
 
     const companyCards = useCompanyCards({policyID});
     const {
@@ -44,18 +48,14 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
     const domainOrWorkspaceAccountID = getDomainOrWorkspaceAccountID(workspaceAccountID, selectedFeed);
 
     // Use a ref so that changes to the employee list (e.g. after inviting a member) don't
-    // recreate the callback and trigger an unnecessary re-fetch that flashes a skeleton loader.
-    const employeeListRef = useRef(policy?.employeeList);
-    useEffect(() => {
-        employeeListRef.current = policy?.employeeList;
-    }, [policy?.employeeList]);
+    const [cardList] = useOnyx(ONYXKEYS.CARD_LIST);
+    const [workspaceCardFeeds] = useOnyx(ONYXKEYS.WORKSPACE_CARD_FEEDS);
+    const [lastSelectedFeed] = useOnyx(ONYXKEYS.LAST_SELECTED_FEED);
+    const hasInitialized = useRef(false);
 
+    const workspaceCardFeedsData = workspaceCardFeeds?.[workspaceID] ?? undefined;
+    const selectedFeed = getSelectedFeed(lastSelectedFeed, workspaceID);
     const loadPolicyCompanyCardsPage = useCallback(() => {
-        // Skip the API call when workspaceAccountID is 0 -- Onyx discards writes to collection keys with member ID '0'.
-        if (domainOrWorkspaceAccountID === CONST.DEFAULT_NUMBER_ID) {
-            return;
-        }
-
         const emailList = Object.keys(getMemberAccountIDsForWorkspace(employeeListRef.current));
         openPolicyCompanyCardsPage(policyID, domainOrWorkspaceAccountID, emailList, translate);
     }, [domainOrWorkspaceAccountID, policyID, translate]);
@@ -65,20 +65,28 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
     });
 
     const isLoading = !isOffline && (!allCardFeeds || (isFeedAdded && isLoadingOnyxValue(cardListMetadata)));
+    const shouldShowLoading = !isEmptyObject(cardList) && (!isEmptyObject(workspaceCardFeeds) || !isEmptyObject(workspaceCardFeedsData));
 
     useEffect(() => {
-        if (isOffline) {
+        if (hasInitialized.current) {
             return;
         }
+
+        if (shouldShowLoading) {
+            setIsLoading(false);
+            hasInitialized.current = true;
+        }
+    }, [shouldShowLoading]);
 
         loadPolicyCompanyCardsPage();
-    }, [loadPolicyCompanyCardsPage, isOffline]);
-
-    const loadPolicyCompanyCardsFeed = useCallback(() => {
-        if (isLoading || !bankName || isFeedPending || isOffline) {
+    }, [loadPolicyCompanyCardsPage, isOffline, hasFeedsLoaded]);
             return;
         }
+        setIsLoading(true);
+        hasInitialized.current = false;
+    }, [selectedFeed]);
 
+    useEffect(() => {
         openPolicyCompanyCardsFeed(domainOrWorkspaceAccountID, policyID, bankName, translate);
     }, [bankName, domainOrWorkspaceAccountID, isFeedPending, isLoading, policyID, translate, isOffline]);
 
@@ -88,16 +96,19 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
 
     const [shouldShowOfflineModal, setShouldShowOfflineModal] = useState(false);
     const {assignCard, isAssigningCardDisabled} = useAssignCard({feedName, policyID, setShouldShowOfflineModal});
+    const canWriteCompanyCards = canMemberWrite(policy, currentUserLogin, CONST.POLICY.POLICY_FEATURE.COMPANY_CARDS);
 
     return (
         <AccessOrNotFoundWrapper
             policyID={route.params.policyID}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_COMPANY_CARDS_ENABLED}
+            policyFeature={CONST.POLICY.POLICY_FEATURE.COMPANY_CARDS}
         >
             <WorkspacePageWithSections
                 icon={memoizedIllustrations.CompanyCard}
                 headerText={translate('workspace.common.companyCards')}
                 route={route}
+                policyFeature={CONST.POLICY.POLICY_FEATURE.COMPANY_CARDS}
                 shouldShowOfflineIndicatorInWideScreen
                 showLoadingAsFirstRender={false}
                 addBottomSafeAreaPadding
@@ -108,7 +119,8 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
                     domainOrWorkspaceAccountID={domainOrWorkspaceAccountID}
                     companyCards={companyCards}
                     onAssignCard={assignCard}
-                    isAssigningCardDisabled={isAssigningCardDisabled}
+                    isAssigningCardDisabled={isAssigningCardDisabled || !canWriteCompanyCards}
+                    canWriteCompanyCards={canWriteCompanyCards}
                     onReloadPage={loadPolicyCompanyCardsPage}
                     onReloadFeed={loadPolicyCompanyCardsFeed}
                 />
