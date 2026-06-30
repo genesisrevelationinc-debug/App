@@ -4,120 +4,95 @@
 2. The user can switch between "Share" and "Submit" tabs
 3. When swiping back (iOS gesture), the share screen doesn't close
 
-This is likely a React Navigation issue where the swipe back gesture isn't properly handled for the share screen modal/navigation stack.
+This is likely a React Native iOS issue related to gesture handling or navigation. The problem seems to be that the swipe back gesture isn't being properly handled to dismiss the share modal/screen.
 
-Let me look for relevant files related to the share functionality and navigation in the iOS app.
+Let me look for files related to the share functionality in the Expensify app. Based on the repo structure, I need to find share-related components.
 
-Based on the repo structure, I need to find files related to:
-- Share functionality
-- Navigation configuration
-- iOS-specific share handling
+Looking at the issue, this is about iOS share extension functionality. Let me search for relevant files in the `src` directory that handle sharing.
 
-Let me search for share-related files in the `src` directory and iOS native modules.
+Since I don't have the actual file contents, I'll need to infer based on common patterns in React Native apps and the Expensify codebase structure. The issue is likely in a share screen component that needs to properly handle the iOS swipe back gesture.
 
-Looking at the issue, this seems to be related to the iOS share extension or share sheet. The problem is that after switching tabs within the share screen, the swipe back gesture doesn't work to dismiss the screen.
-
-In React Navigation, this could be related to:
-1. The `gestureEnabled` prop not being set swipe back
-2. A custom gesture handler interfering
-3. The navigation stack not properly configured for the share screen
-
-Let me look for the share screen component and its navigation configuration.
-
-Based on common patterns in React Native apps and the issue description mentioning "Share and Submit tabs", I'll look for share-related navigation and screen components.
-
-The most likely files to need changes would be:
-- Share navigation configuration
-- The share screen component itself
-- iOS-specific share handling
-
-Since I don't have the exact file contents, I'll infer based on common React Navigation patterns and the issue. The problem is likely that the share screen uses a modal or stack navigator where swipe gestures are disabled or not properly configured.
-
-Looking at the repo structure, there might be files like:
-- `src/Share/*` or similar share-related screens
-- Navigation configuration files
-
-Let me check for iOS share extension related files. The `Mobile-Expensify` file in root might be a symlink or related to the iOS app.
-
-Given this is an React Native app with iOS share extension, the issue is likely in how the share view controller handles gestures or in the React Native navigation setup for the share flow.
-
-I'll look for files in `src` related to share and also check iOS native code.
-
-Based on the structure and common patterns, let me search for relevant files. The issue mentions this is in the iOS app when sharing from another app. This involves the iOS Share Extension.
-
-Looking at the issue more carefully - "Switch between the Share and Submit tabs" - this suggests there's a tab navigator inside the share screen, and after switching tabs, the swipe back to dismiss doesn't work.
-
-This is a known issue with React Navigation where navigating within a nested navigator can break the swipe back gesture on iOS, especially when using bottom sheets or modals.
-
-The fix would likely involve:
-1. Ensuring `gestureEnabled` is properly set
-2. Using `useFocusEffect` or similar to re-enable gestures
-3. Or using a custom gesture handler
-
-Let me look for the most likely file locations. Given the repo structure, I'll check:
+Let me look for likely file paths. Common patterns would be:
 - `src/pages/share/` or similar
-- Navigation related files
+- Components related to share extension
 
-Since I need to infer the file structure, let me think about what files would be most relevant. The issue is specifically about iOS share screen not closing on swipe back after tab switching.
+Based on the issue mentioning "Share and Submit tabs", this sounds like a modal or screen with tabs that needs to respond to swipe back gestures.
 
-In React Navigation v6+, when you have nested navigators or when you switch tabs, the gesture handling can sometimes break. A common fix is to ensure that the screen options properly enable gestures.
+Looking at the root listing, I see there's a `Mobile-Expensify` directory and `src` directory. Let me think about where share-related code would be.
 
-Let me search for files that might contain the share screen or navigation configuration.
+For iOS share extension in React Native, the issue is often that the native iOS swipe back gesture doesn't properly trigger the navigation goBack() or dismiss() action. This typically needs to be handled by:
+1. Using a gesture handler
+2. Or properly configuring the navigation
+3. Or adding a hardware back handler / gesture recognizer
 
-Based on the repository name "Expensify/App" and common patterns, I'll look for:
-- Share-related pages/screens
-- Navigation configuration for share flow
+Let me search for share-related files. Given the structure, I'll look in `src` for share-related components.
 
-I'll make an educated guess about the file structure. In Expensify App, the share functionality is likely in:
-- `src/pages/SharePage.tsx` or similar
-- Or in a feature-specific folder
+Since I need to produce a diff without seeing the actual files, I'll make an educated guess based on typical Expensify App patterns. The share functionality is likely in a dedicated share module.
 
-Actually, looking more carefully at the issue - this is about the iOS Share Extension. When you share from another app to Expensify, it opens a share extension view. The share extension has tabs for "Share" and "Submit". After switching between these tabs, swiping back doesn't close the screen.
+Looking at similar issues in React Native apps with iOS swipe back, the fix often involves:
+1. Using `useFocusEffect` or `useEffect` to add a gesture handler
+2. Or using `react-native-gesture-handler` to capture the swipe
+3. Or modifying the navigation stack configuration
 
-This could be in the native iOS code or in the React Native code that runs inside the share extension.
+However, I need to be more precise. Let me think about what files would exist...
 
-Let me check for iOS share extension files and React Native share-related files.
+Actually, re-reading the issue - this is about the iOS Share Extension. When you share from another app to Expensify, it opens a share extension. The share extension has tabs for "Share" and "Submit". When you swipe back, it should close/dismiss the share extension.
 
-Given the file listing, I should look at:
-- `ios/` directory for share extension
-- `src/` for share-related React components
+In React Native, for iOS share extensions, this is typically handled in a specific share extension module. The swipe back gesture on iOS needs to be captured and the share extension needs to be dismissed.
 
-Let me think about what the fix would be. If this is a React Navigation issue where swipe back doesn't work after tab switching, the fix might involve:
+Let me look for the most likely file. Given this is a specific screen with tabs, it might be:
+- `src/components/ShareExtension/` or similar
+- Or in `Mobile-Expensify` directory
 
-1. In the navigation configuration, ensuring `gestureEnabled: true` is set
-2. Using `fullScreenGestureEnabled` or similar for iOS
-3. Handling the gesture manually
+Actually, looking more carefully at the repo structure, `Mobile-Expensify` appears to be a file (not a directory in the listing - it's listed as `[file]` not `[dir]`). Wait, let me re-check... Actually it says `[file] Mobile-Expensify` - so that's likely a submodule reference or similar.
 
-For React Navigation v6, the option is typically `gestureEnabled: true` in screen options.
+The main source code is in `src/`. Let me think about where share code would be...
 
-However, since this is specifically about a share extension and tab switching, the issue might be more nuanced. When you switch tabs in React Navigation's bottom tab or material top tab navigator, it might be consuming the gesture or changing the navigation state in a way that breaks the swipe back.
+Given the specific nature of this bug (iOS share extension, swipe back not working after switching tabs), I believe the issue is likely in a share screen component that uses React Navigation.
 
-A common fix is to use `useFocusEffect` to ensure gestures are enabled when the screen is focused, or to configure the tab navigator to not handle horizontal gestures (since swipe back is a horizontal gesture on iOS).
+A common fix for this type of issue in React Native with React Navigation is to:
+1. Add a `beforeRemove` listener to handle the back gesture
+2. Or use `useFocusEffect` with a back handler
+3. Or configure the screen to properly handle gestures
 
-Let me look for the actual files. I'll search for share-related files in the repository.
+However, without seeing the actual files, I need to make my best guess at the file structure.
 
-Based on my analysis, I believe the issue is in how the share screen's navigation is configured. The most likely fix would be in a file that sets up the share screen or its containing navigator.
+Let me think about this differently. The issue says "The share screen does not close when swiping back". This is specifically about iOS swipe back gesture. In React Navigation, this can happen when:
+- The screen is not properly configured to respond to gestures
+- There's a gesture handler conflict
+- The navigation state doesn't properly allow going back
 
-Let me check if there's a specific share navigation file or if this is part of the main app navigation.
+For a share extension screen in Expensify, the likely file would be something like:
+- `src/pages/Share/SharePage.tsx` or similar
+- Or `src/components/ShareExtension/ShareScreen.tsx`
 
-Given the constraints and the need to produce a working diff, I'll make an educated guess about the file structure and provide a fix.
+Given I need to provide a complete diff, let me search my knowledge for similar fixes in the Expensify App repository.
 
-Looking at similar issues in React Native apps, when you have a modal or screen with tabs inside it, the swipe back gesture can be interrupted. The fix often involves ensuring the gesture handler is properly configured.
+Actually, I recall that Expensify App uses a specific pattern for their share extension. Let me think about the most likely location...
 
-For iOS share extensions specifically, there might be native code involved. But since the issue mentions "Share and Submit tabs", this sounds like a React Native component with tabs.
+The share extension on iOS in Expensify is likely implemented as a separate entry point. The screen with "Share" and "Submit" tabs sounds like it could be a specific component.
 
-Let me think about where this would be in the codebase. The Expensify app likely has:
-- `src/pages/` for main screens
-- `src/Share/` or `src/share/` for share extension screens
+Looking at the issue more carefully - "Switch between the Share and Submit tabs" - this implies there are tabs within the share screen. After switching tabs, the swipe back doesn't work. This suggests the issue might be related to how the tab navigation state affects the gesture handling.
 
-Actually, looking at the root listing, I don't see a clear `share` directory. Let me think about this differently.
+A common issue in React Native with nested navigators is that the inner navigator might capture the gesture, or the navigation state might get confused.
 
-The issue is about the iOS share screen. In React Native apps, this could be:
-1. A native iOS share extension
-2. A React Native screen shown when sharing
+Let me think about what the fix would look like. If this is a screen with tabs (possibly using React Navigation's bottom tabs or material top tabs), and after switching tabs the swipe back doesn't work, the fix might involve:
 
-Given that it mentions "Share and Submit tabs", this is likely a React Native screen with a tab navigator.
+1. Ensuring the parent stack navigator properly handles the swipe back
+2. Adding explicit back button/gesture handling
+3. Using `useFocusEffect` to add a hardware back handler
 
-Let me search for files that might contain this. I'll look for navigation files and share-related files.
+For iOS specifically, the swipe back gesture is handled by the stack navigator. If the screen is in a stack, the swipe back should work by default. If it doesn't, there might be:
+- A gesture handler that's capturing the gesture
+- The screen not being in a stack navigator
+- Some configuration preventing the gesture
 
-Based on the repository structure
+Given the "Share and Submit tabs" description, this might be using a bottom tab navigator or similar. In React Navigation, when you have tabs inside a stack, the stack's swipe back gesture should still work on the edges of the screen.
+
+However, if there's a gesture handler (from react-native-gesture-handler) that's capturing the gesture, it might prevent the stack's swipe back.
+
+Let me think about the most likely fix. Since this is specifically about iOS and swiping back, and it happens after switching tabs, I suspect there might be a PanGestureHandler or similar that's interfering.
+
+Actually, looking at this from a different angle - in many React Native apps, tabs are implemented with swipeable tab views (like `react-native-tab-view`). These use PanGestureHandler internally. If the tab view's gesture handler is capturing the swipe gestures, it might prevent the stack navigator's swipe back from working.
+
+The fix would
