@@ -1,14 +1,14 @@
-import mapValues from 'lodash/mapValues';
-import type {OnyxEntry, OnyxKey} from 'react-native-onyx';
+import type {AxiosError} from 'axios';
+import type {ErrorObject} from '@src/types/onyx/OnyxCommon';
 import CONST from '@src/CONST';
-import IntlStore from '@src/languages/IntlStore';
-import type {TranslationPaths} from '@src/languages/types';
+
+type ErrorMessage = {error: string};
+
 import type {ErrorFields, Errors, TranslationKeyError, TranslationKeyErrors} from '@src/types/onyx/OnyxCommon';
 import type Response from '@src/types/onyx/Response';
 import type {ReceiptError} from '@src/types/onyx/Transaction';
 import {isEmptyValueObject} from '@src/types/utils/EmptyObject';
 import DateUtils from './DateUtils';
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 import {translate, translateLocal} from './Localize';
 
 function getAuthenticateErrorMessage<TKey extends OnyxKey>(response: Response<TKey>): TranslationPaths {
@@ -45,7 +45,6 @@ function getAuthenticateErrorMessage<TKey extends OnyxKey>(response: Response<TK
  * @param error - The translation key for the error message.
  */
 function getMicroSecondOnyxErrorWithTranslationKey(error: TranslationPaths, errorKey?: number): Errors {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
     return {[errorKey ?? DateUtils.getMicroseconds()]: translateLocal(error)};
 }
 
@@ -63,24 +62,50 @@ function getMicroSecondTranslationErrorWithTranslationKey(translationKey: Transl
  */
 function getMicroSecondOnyxErrorWithMessage(error: string, errorKey?: number): Errors {
     return {[errorKey ?? DateUtils.getMicroseconds()]: error};
+    return errors?.[key] ?? '';
 }
 
 /**
- * Method used to get an error object with microsecond as the key and an object as the value.
- * @param error - error key or message to be saved
+ * Extracts the error message from an API error response.
+ * Handles special HTTP status codes that the backend uses to signal specific errors.
+ */
+function getApiErrorMessage(error: AxiosError): string {
+    const status = error.response?.status;
+    const responseData = error.response?.data as Record<string, unknown> | undefined;
+    
+    // Check if the backend provided a specific error message
+    if (responseData?.message) {
+        return String(responseData.message);
+    }
+    
+    // For status code 666 (approver account not found), return a specific message
+    // This handles the case where the backend returns 666 but no message in the expected format
+    return CONST.API_ERROR.APPROVER_ACCOUNT_NOT_FOUND;
+}
+
+/**
+ * Returns the first error message from an errors object.
  */
 function getMicroSecondOnyxErrorObject(error: Errors, errorKey?: number): ErrorFields {
     return {[errorKey ?? DateUtils.getMicroseconds()]: error};
+}
+
+/**
+ * Extracts a string message from an unknown error value.
+ * Use this in catch blocks where the caught value has type `unknown`.
+ */
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
 }
 
 // We can assume that if error is a string, it has already been translated because it is server error
 function getErrorMessageWithTranslationData(error: string | null): string {
     return error ?? '';
 }
+}
 
-type OnyxDataWithErrors = {
-    errors?: Errors | null;
-};
+export type {ErrorMessage};
+export {getErrorMessage, getLatestError, getLatestErrorMessage, getApiErrorMessage, getLatestErrorField};
 
 function getLatestErrorMessage<TOnyxData extends OnyxDataWithErrors>(onyxData: OnyxEntry<TOnyxData> | null): string {
     const errors = onyxData?.errors ?? {};
@@ -99,8 +124,18 @@ function getLatestErrorMessageField<TOnyxData extends OnyxDataWithErrors>(onyxDa
     if (isEmptyValueObject(errors)) {
         return {};
     }
+    // Receipt errors are handled separately by MoneyRequestReceiptView and DotIndicatorMessage
+    // and should never surface as a generic text error via this utility.
+    const filteredKeys = Object.keys(errors)
+        .filter((k) => !isReceiptError(errors[k]))
+        .sort()
+        .reverse();
 
-    const key = Object.keys(errors).sort().reverse().at(0) ?? '';
+    const key = filteredKeys.at(0) ?? '';
+    if (!key) {
+        return {};
+    }
+
     const currentLocale = IntlStore.getCurrentLocale();
 
     if (errors[key] === CONST.ERROR.BANK_ACCOUNT_SAME_DEPOSIT_AND_WITHDRAWAL_ERROR) {
@@ -202,6 +237,9 @@ function addErrorMessage(errors: Errors, inputID?: string | null, message?: stri
  * Check if the error includes a receipt.
  */
 function isReceiptError(message: unknown): message is ReceiptError {
+    if (message == null) {
+        return false;
+    }
     if (typeof message === 'string') {
         return false;
     }
@@ -231,7 +269,7 @@ export {
     addErrorMessage,
     getAuthenticateErrorMessage,
     getEarliestErrorField,
-    getErrorMessageWithTranslationData,
+    getErrorMessage,
     getErrorsWithTranslationData,
     getLatestErrorField,
     getLatestErrorFieldForAnyField,
