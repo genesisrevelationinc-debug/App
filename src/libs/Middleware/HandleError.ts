@@ -13,5 +13,5 @@ import CONST from '@src/CONST';
     }
     
     const data = error.response?.data as Record<string, unknown> | undefined;
-    if.kr
     if (data?.message) {
+        return String(data.message);
