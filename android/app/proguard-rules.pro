@@ -1,9 +1,26 @@
 # Add project specific ProGuard rules here.
 # By default, the flags in this file are appended to flags specified
-# in /usr/local/Cellar/android-sdk/24.3.3/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
+# in /usr/local/Cellar/android-sdk/tools/proguard/proguard-android.txt
 #
+# Fix for ART crash: InvokeVirtualOrInterfaceWithVarArgs SIGSEGV
+# Keep JNI-related classes to prevent obfuscation issues with varargs invocation
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep React Native JNI bridge classes
+-keep class com.facebook.react.bridge.** { *; }
+-keep class com.facebook.react.turbomodule.core.** { *; }
+-keep class com.facebook.react.fabric.** { *; }
+
+# Keep Expensify native modules
+-keep class com.expensify.** { *; }
+
+# Prevent obfuscation of methods with varargs used in JNI
+-keepattributes Signature,Exceptions,InnerClasses,EnclosingMethod
+
+# You can edit the include path and order by changing the proguardFiles
+# in build.gradle.
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
@@ -56,11 +73,4 @@
 -assumenosideeffects class android.util.Log {
     public static int d(...);
     public static int v(...);
-   native <methods>;
-   @com.facebook.react.bridge.ReactMethod *;
-   @com.facebook.react.uimanager.annotations.ReactProp *;
-   @com.facebook.react.uimanager.annotations.ReactPropGroup *;
-   <init>(...);
-   <init>();
-   <init>();
 }
