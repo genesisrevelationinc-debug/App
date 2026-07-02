@@ -1,3 +1,5 @@
+import java.util.Properties
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -70,12 +72,23 @@ react {
 }
 
 project.ext.envConfigFiles = [
-    productionDebug: ".env.production",
-    productionRelease: ".env.production",
-    adhocRelease: ".env.adhoc",
-    developmentRelease: ".env",
-    developmentDebug: ".env",
-]
+ */
+def jscFlavor = 'org.webkit:android-jsc:+'
+
+/**
+ * Fix for ART crash: InvokeVirtualOrInterfaceWithVarArgs SIGSEGV
+ * Disable R8 full mode to prevent aggressive obfuscation that breaks JNI bridge
+ */
+android.enableR8.fullMode=false
+
+/**
+ * Additional ProGuard rules for React Native bridge stability
+ */
+def enableProguardExtraRules = true
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
@@ -86,12 +99,18 @@ def enableProguardInReleaseBuilds = true
  * The preferred build flavor of JavaScriptCore (JSC)
  *
  * For example, to use the international variant, you can use:
- * `def jscFlavor = io.github.react-native-community:jsc-android-intl:2026004.+`
- *
- * The international variant includes ICU i18n library and necessary data
- * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
- * give correct results when using with locales other than en-US. Note that
- * this variant is about 6MiB larger per architecture than default.
+        versionName "1.0"
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
+
+        // Fix for ART crash during JNI bridge invocation
+        // Ensure stable JNI method signatures for React Native bridge
+        if (enableProguardExtraRules) {
+            consumerProguardFiles 'proguard-rules.pro'
+        }
+
+        if (System.properties['newArchEnabled'] == 'true') {
+            println("Building New Architecture")
+            externalNativeBuild {
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
@@ -111,8 +130,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         multiDexEnabled rootProject.ext.multiDexEnabled
-        versionCode 1009032702
-        versionName "9.3.27-2"
+        versionCode 1009042600
+        versionName "9.4.26-0"
         // Supported language variants must be declared here to avoid from being removed during the compilation.
         // This also helps us to not include unnecessary language variants in the APK.
         resConfigs "en", "es"
