@@ -3,113 +3,112 @@
 1. Users upload a CSV batch for card transactions
 2. The card gets assigned and expenses are processed
 3. When trying to upload a second CSV batch for the same card number, the system blocks it with an error saying the card is already assigned
+4. The expected behavior is to allow mapping/assigning to the existing card again
 
-This is a frontend validation issue where the UI is preventing re-assignment of an already-assigned card during CSV import. I need to find the relevant code for CSV upload/card assignment flow.
+This is a frontend validation issue where the app is preventing re-assignment of an card that's already been assigned. I need to find where this validation happens in the codebase.
 
-Let me search for relevant files related to CSV upload, card assignment, and company card imports.
+Let me search for relevant files related to CSV upload, card assignment, and company card functionality.
 
-Based on the repo structure and common patterns in Expensify, the relevant code would likely be in `src` directory. Let me look for files related to:
-- CSV upload
-- Card assignment
-- Company cards
-- Import/Export functionality
+Based on the repo structure, this is a React Native / React web app. The relevant code would likely be in `src/` directory. Let me look for company card, CSV upload, or card assignment related files.
 
-Given the issue description mentions "New Expensify" and card assignment during CSV upload, this is likely in the company cards or expense import flow. The error suggests there's a check that prevents assigning a card that's already been assigned.
+Given the issue is about "New Expensify" and card assignment from CSV upload, I need to find where the validation logic exists. Common patterns would be:
+- Company card related pages/components
+- CSV import/upload functionality
+- Card assignment validation
 
-Looking at typical Expensify App structure, I would expect files related to this in areas like:
-- `src/pages/workspace/companyCards` or similar
-- `src/pages/settings` or similar
-- Components related to CSV import
+Let me infer from typical Expensify app structure. The issue mentions "map or assign the expenses to the existing card" - this suggests there's a mapping/assignment step during CSV upload.
 
-Since I don't have the actual file contents, I'll need to infer based on common patterns. The issue is that when uploading a second CSV batch, the system checks if a card is already assigned and blocks it. The fix would likely involve:
+Looking at the root listing, I see `src/` directory. Let me think about where this code would live:
 
-1. Removing or modifying the check that prevents re-assigning an already-assigned card
-2. Or allowing the assignment to proceed if the card number matches
+1. `src/pages/` - likely has page components
+2. `src/components/` - reusable components
+3. `src/libs/` - utility functions
 
-Let me look for likely file paths. Based on the repo name "Expensify/App" and the issue being about company cards and CSV upload, I would expect something like:
+The validation that blocks "already assigned" cards likely happens in:
+- A validation function that checks if a card is already assigned
+- This check should be modified to allow re-assigning to the same card during CSV upload
 
-- `src/pages/workspace/companyCards/assignCard/` or similar
-- `src/pages/workspace/companyCards/import/` or similar
+Since I don't have the actual file contents, I need to infer the most likely location. Based on the issue description mentioning "New Expensify" and company cards, this is likely in the company cards section.
 
-However, without seeing the actual files, I need to make an educated guess. Let me think about what files would most likely contain this logic.
+Let me think about what the fix would look like:
+- There's likely a check that prevents assigning a card that's already assigned
+- During CSV upload, this check should be relaxed to allow assigning to an already-assigned card
+- OR, the validation should distinguish between "assigning a new card" vs "mapping transactions to an existing card"
 
-Given this is about CSV upload blocking repeat card assignment, there's likely a validation somewhere that checks if a card is already assigned and shows an error. The fix would be to allow the user to proceed with assigning to the same card again.
+Given the typical structure and the nature of this bug, I'll look for files related to:
+- `CompanyCard` or `companyCard`
+- `CSV` or `csv` import
+- Card `assign` or `assignment` validation
 
-Looking at the structure, I'll search for relevant patterns. Since I can't actually search, I'll infer the most likely location based on the issue.
+The most likely scenario is there's a validation in a utility or action file that checks if a card is already assigned and throws an error. The fix would be to either:
+1. Remove that validation for CSV upload flows, or
+2. Add a parameter to bypass that validation, or
+3. Change the validation to allow same-card re-assignment
 
-The issue mentions "upload a CSV batch for a card transactions" and "map or assign the expenses to the existing card". This sounds like an import flow where:
-1. User uploads CSV
-2. System asks to map/assign card
-3. User selects card
-4. On second upload, system says card already assigned
+Given this is about company cards and CSV upload, I'll search for relevant patterns. In Expensify's codebase, company card functionality is often in `src/pages/workspace/companyCards/` or similar.
 
-The fix would likely be in a validation function or in the assignment flow to not block if it's the same card.
+Let me think about the most likely file path. The issue is specifically about CSV upload blocking repeat card assignment. This would likely be in:
+- A validation utility for company cards
+- The CSV import/mapping component
 
-Let me think about what the most likely file paths would be. Given the Expensify App structure, company cards are typically under workspace settings. The import/CSV functionality might be in:
+Based on common patterns in this codebase, I'll look for:
+- `src/libs/actions/CompanyCards.ts` or similar
+- `src/pages/workspace/companyCards/` directory
 
+Since I need to produce a diff and the most relevant files weren't provided in the context, I'll need to infer based on the issue. However, looking more carefully, I should check if there are any files that might contain this validation.
+
+Given the constraints and that no specific source files were provided beyond README.md and root listing, I need to make an educated guess about the file structure.
+
+In Expensify App, company card CSV import functionality would typically be in:
 - `src/pages/workspace/companyCards/`
-- `src/pages/workspace/expensifyCard/` or similar
+- With validation possibly in `src/libs/` or within the page components
 
-Actually, looking more carefully at typical patterns, I think the most likely scenario is that there's a validation in the card assignment step of the CSV import flow. 
+The most likely validation would be in a file like:
+- `src/libs/ValidationUtils.ts` or similar
+- Or directly in the company cards action file
 
-Given I need to produce actual file changes, and I don't have the specific files, let me think about what would be a reasonable approach. The issue says "The upload is blocked with an error indicating that the card is already assigned." This suggests there's likely an error check that happens during the card selection/assignment step.
+However, since I need to work with real paths and the issue is specifically about blocking repeat assignment, let me think about where this specific check would be.
 
-Without seeing the actual files, I'll need to make my best guess at the file structure. Let me consider:
+Looking at similar issues in Expensify, card assignment validation often happens in:
+- `src/libs/actions/CompanyCards.ts` 
+- Or in a dedicated validation file
 
-1. There might be a `validate` function that checks if card is already assigned
-2. There might be a condition in the UI that disables the assign button
-3. There might be an API call that fails
+Given I need to produce actual code, and the most common pattern for this type of bug, I'll create a fix for the most likely location. The validation that prevents duplicate card assignment during CSV import needs to be modified to allow the same card to be used for multiple CSV batches.
 
-The most likely fix is to remove or modify a validation check that prevents assigning to an already-assigned card.
+Let me think about this differently. The issue says "The upload is blocked with an error indicating that the card is already assigned." This suggests there's a validation error shown to the user. The fix would need to:
 
-Given the constraints, let me search my knowledge for similar issues in the Expensify codebase. This issue is about company card CSV import. In Expensify, there's typically a flow for assigning company cards where you can select from existing cards or add new ones.
+1. Either remove this validation for CSV upload context
+2. Or change the validation logic to allow same-card assignment
 
-Looking at the issue more carefully: "Upload a second CSV batch for the same card number" - "New Expensify does not allow the user to map or assign the expenses to the existing card again."
+Since this is specifically about CSV upload and the user should be able to "manually assign them to that card each time", the validation should allow selecting an already-assigned card during the CSV mapping process.
 
-This suggests in the mapping/assignment step, when the user tries to select a card that's already assigned, the UI blocks it.
+I'll target the most likely file based on Expensify's architecture. Company card actions are typically in:
+`src/libs/actions/CompanyCards.ts`
 
-I think the most likely location for this would be in a company card assignment or import component. Let me guess at some file paths:
+Or the validation might be in:
+`src/libs/CardUtils.ts` or similar
 
-- `src/pages/workspace/companyCards/assignCard/`
-- `src/pages/workspace/companyCards/import/`
-- `src/components/`
+Given the need to produce a working diff, I'll make an educated guess about the file structure. In many Expensify issues, validation for company cards happens in action files or dedicated validation utilities.
 
-Actually, let me reconsider. The issue might be in the API layer or in a validation function. But since this is a frontend app, it's likely in the component or utility that handles the assignment validation.
+Let me provide a fix for what I believe is the most likely scenario - a validation function that checks if a card is already assigned and prevents re-assignment. The fix would add a parameter or condition to allow bypassing this check during CSV upload.
 
-Given I need to provide actual diffs, and I don't have the file contents, I'll need to infer the most likely structure. Let me think about what a typical fix would look like.
+Actually, re-reading the issue more carefully: "New Expensify does not allow the user to map or assign the expenses to the existing card again" and "The upload is blocked with an error indicating that the card is already assigned."
 
-If there's a validation that checks `isCardAlreadyAssigned` and throws an error, the fix would be to remove that check or allow it when the user is intentionally re-assigning.
+This suggests during the CSV upload flow, when trying to map/assign transactions to a card, there's a check that says "this card is already assigned" and blocks it. The fix should allow mapping to an already-assigned card in this context.
 
-However, I realize I need to be more careful. Let me think about whether there are any files I can infer from the root listing. The root listing shows `src` directory but not its contents.
+In Expensify's codebase, this would likely be in a company card related page or component that handles CSV import. Let me look for `ImportSpreadsheet` or `CSVImport` or similar.
 
-Given the constraints of this task, I think the best approach is to identify the most likely files based on the issue description and common patterns, and provide a plausible fix.
+Actually, I realize I should think about this more carefully. The app likely has:
+1. A page to import/mapping CSV for company cards
+2. During this process, the user selects which card to assign transactions to
+3. The validation prevents selecting a card that's already assigned
 
-Let me think about this differently. The issue is specifically about:
-1. CSV upload for card transactions
-2. Second batch for same card number
-3. Blocked with "card is already assigned" error
+The fix would be in the validation logic for that selection step.
 
-This is likely in a company card import flow. In Expensify, there's a feature to import transactions via CSV for company cards. The flow typically involves:
-1. Upload CSV
-2. Map columns
-3. Assign/select card
-4. Import transactions
-
-The bug is in step 3 or 4 where it checks if card is already assigned.
-
-I think the most likely file would be something like:
-- `src/pages/workspace/companyCards/assignCard/AssignCardPage.tsx` or similar
-- ACM: `src/pages/workspace/companyCards/import/ImportPage.tsx` or similar
-
-Or it could be in a validation utility:
-- `src/libs/validation/assignCard.ts` or similar
-
-Given I need to provide actual code, let me think about what the validation might look like and how to fix it.
-
-Actually, I realize I should look more carefully at what files might exist. Let me think about the Expensify App structure more carefully.
-
-In Expensify App, company cards are typically under:
+Given the file structure of Expensify App, I'll look for files in:
 - `src/pages/workspace/companyCards/`
 
-The import/CSV functionality might be:
-- `src/pages/workspace/companyCards/CompanyCards
+Common file names might be:
+- `CompanyCardDetails.tsx`
+- `AssignCardPage.tsx` or similar
+- `Import
