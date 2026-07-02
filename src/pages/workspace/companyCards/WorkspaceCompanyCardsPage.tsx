@@ -1,8 +1,8 @@
-import type {StackScreenProps} from '@react-navigation/stack';
-import React, {useEffect, useRef} from 'react';
-import {View} from 'react-native';
-import {useOnyx} from 'react-native-onyx';
-import HeaderWithBackButton from '@components/HeaderWithBackButton';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import DecisionModal from '@components/DecisionModal';
+import WorkspaceCompanyCardsTable from '@components/Tables/WorkspaceCompanyCardsTable';
+import useAssignCard from '@hooks/useAssignCard';
+import useCompanyCards from '@hooks/useCompanyCards';
 import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
@@ -42,13 +42,12 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
         bankName,
         isFeedPending,
         isFeedAdded,
-    const [cardList] = useOnyx(`${ONYXKEYS.COLLECTION.WORKSPACE_CARDS_LIST}${workspaceCardListKey ?? '-1'}`, {initialValue: {}});
-    const [cardSettings] = useOnyx(`${ONYXKEYS.COLLECTION.WORKSPACE_CARDS_SETTINGS}${workspaceCardListKey ?? '-1'}`, {initialValue: {}});
-    const [lastSelectedFeed] = useOnyx(ONYXKEYS.LAST_SELECTED_FEED);
-    const hasInitialized = useRef(false);
+        onyxMetadata: {cardListMetadata},
+    } = companyCards;
 
-    const selectedFeed = lastSelectedFeed?.[policyID] ?? '';
-    const isFeedSelected = !!selectedFeed && !!cardList?.[selectedFeed];
+    const domainOrWorkspaceAccountID = getDomainOrWorkspaceAccountID(workspaceAccountID, selectedFeed);
+
+    // Use a ref so that changes to the employee list (e.g. after inviting a member) don't
     // recreate the callback and trigger an unnecessary re-fetch that flashes a skeleton loader.
     const employeeListRef = useRef(policy?.employeeList);
     useEffect(() => {
@@ -56,18 +55,18 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
     const shouldShowLoading = !isLoaded || isPending;
 
     useEffect(() => {
-        if (hasInitialized.current) {
+        // Prevent re-fetching data when the page is already loaded
+        if (isLoaded && !isPending) {
             return;
         }
-        hasInitialized.current = true;
 
         if (!policyID || !isPolicyAdmin) {
             return;
         }
 
-        if (!isPending) {
-            return;
-        }
+    const {isOffline} = useNetwork({
+        onReconnect: loadPolicyCompanyCardsPage,
+    });
 
     const isLoading = !isOffline && (!allCardFeeds || (isFeedAdded && isLoadingOnyxValue(cardListMetadata)));
 
