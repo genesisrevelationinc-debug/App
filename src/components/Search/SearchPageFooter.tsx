@@ -23,16 +23,20 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
     const {isOffline} = useNetwork();
 
     const {shouldUseNarrowLayout} = useResponsiveLayout();
-    const [displayString, setDisplayString] = useState<string>('');
+    const [isLayoutReady, setIsLayoutReady] = useState(false);
 
     useEffect(() => {
-        setDisplayString(convertToDisplayString(total, currency));
-    }, [total, currency, convertToDisplayString]);
+        setIsLayoutReady(true);
+    }, []);
 
     const valueTextStyle = useMemo(() => (isOffline ? [styles.textLabelSupporting, styles.labelStrong] : [styles.labelStrong]), [isOffline, styles]);
 
+    if (!isLayoutReady) {
+        return null;
+    }
 
     return (
+        <View
         <View
             style={[
                 shouldUseNarrowLayout ? styles.justifyContentStart : styles.justifyContentEnd,
@@ -41,13 +45,13 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
                 styles.pv3,
                 styles.flexRow,
                 styles.gap3,
-            </View>
+                StyleUtils.getBackgroundColorStyle(theme.appBG),
+            ]}
+        >
             <View style={[styles.flexRow, styles.gap1]}>
-                <Text style={styles.textLabelSupporting}>{`${translate('common.totalSpend')}:`}</Text>
-                <Text style={valueTextStyle}>{displayString}</Text>
+                <Text style={styles.textLabelSupporting}>{`${translate('common.expenses')}:`}</Text>
+                <Text style={valueTextStyle}>{count}</Text>
             </View>
-        </View>
-    );
             <View style={[styles.flexRow, styles.gap1]}>
                 <Text style={styles.textLabelSupporting}>{`${translate('common.totalSpend')}:`}</Text>
                 <Text style={valueTextStyle}>{convertToDisplayString(total, currency)}</Text>
