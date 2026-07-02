@@ -1,8 +1,8 @@
 import type {StackScreenProps} from '@react-navigation/stack';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {View} from 'react-native';
 import {useOnyx} from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
+import HeaderWithBackButton from '@components/HeaderWithBackButton';
 import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
@@ -42,51 +42,50 @@ function WorkspaceCompanyCardsPage({route}: WorkspaceCompanyCardsPageProps) {
         bankName,
         isFeedPending,
         isFeedAdded,
-        onyxMetadata: {cardListMetadata},
-    } = companyCards;
-
-    const domainOrWorkspaceAccountID = getDomainOrWorkspaceAccountID(workspaceAccountID, selectedFeed);
-
-    // Use a ref so that changes to the employee list (e.g. after inviting a member) don't
-    const [cardList] = useOnyx(ONYXKEYS.CARD_LIST);
-    const [workspaceCardFeeds] = useOnyx(ONYXKEYS.WORKSPACE_CARD_FEEDS);
+    const [cardList] = useOnyx(`${ONYXKEYS.COLLECTION.WORKSPACE_CARDS_LIST}${workspaceCardListKey ?? '-1'}`, {initialValue: {}});
+    const [cardSettings] = useOnyx(`${ONYXKEYS.COLLECTION.WORKSPACE_CARDS_SETTINGS}${workspaceCardListKey ?? '-1'}`, {initialValue: {}});
     const [lastSelectedFeed] = useOnyx(ONYXKEYS.LAST_SELECTED_FEED);
     const hasInitialized = useRef(false);
 
-    const workspaceCardFeedsData = workspaceCardFeeds?.[workspaceID] ?? undefined;
-    const selectedFeed = getSelectedFeed(lastSelectedFeed, workspaceID);
-    const loadPolicyCompanyCardsPage = useCallback(() => {
-        const emailList = Object.keys(getMemberAccountIDsForWorkspace(employeeListRef.current));
-        openPolicyCompanyCardsPage(policyID, domainOrWorkspaceAccountID, emailList, translate);
-    }, [domainOrWorkspaceAccountID, policyID, translate]);
-
-    const {isOffline} = useNetwork({
-        onReconnect: loadPolicyCompanyCardsPage,
-    });
-
-    const isLoading = !isOffline && (!allCardFeeds || (isFeedAdded && isLoadingOnyxValue(cardListMetadata)));
-    const shouldShowLoading = !isEmptyObject(cardList) && (!isEmptyObject(workspaceCardFeeds) || !isEmptyObject(workspaceCardFeedsData));
+    const selectedFeed = lastSelectedFeed?.[policyID] ?? '';
+    const isFeedSelected = !!selectedFeed && !!cardList?.[selectedFeed];
+    // recreate the callback and trigger an unnecessary re-fetch that flashes a skeleton loader.
+    const employeeListRef = useRef(policy?.employeeList);
+    useEffect(() => {
+        employeeListRef.current = policy?.employeeList;
+    const shouldShowLoading = !isLoaded || isPending;
 
     useEffect(() => {
         if (hasInitialized.current) {
             return;
         }
+        hasInitialized.current = true;
 
-        if (shouldShowLoading) {
-            setIsLoading(false);
-            hasInitialized.current = true;
+        if (!policyID || !isPolicyAdmin) {
+            return;
         }
-    }, [shouldShowLoading]);
+
+        if (!isPending) {
+            return;
+        }
+
+    const isLoading = !isOffline && (!allCardFeeds || (isFeedAdded && isLoadingOnyxValue(cardListMetadata)));
+
+    const hasFeedsLoaded = !!allCardFeeds && Object.keys(allCardFeeds).length > 0;
+
+    useEffect(() => {
+        if (isOffline || hasFeedsLoaded) {
+            return;
+        }
 
         loadPolicyCompanyCardsPage();
     }, [loadPolicyCompanyCardsPage, isOffline, hasFeedsLoaded]);
+
+    const loadPolicyCompanyCardsFeed = useCallback(() => {
+        if (isLoading || !bankName || isFeedPending || isOffline) {
             return;
         }
-        setIsLoading(true);
-        hasInitialized.current = false;
-    }, [selectedFeed]);
 
-    useEffect(() => {
         openPolicyCompanyCardsFeed(domainOrWorkspaceAccountID, policyID, bankName, translate);
     }, [bankName, domainOrWorkspaceAccountID, isFeedPending, isLoading, policyID, translate, isOffline]);
 
