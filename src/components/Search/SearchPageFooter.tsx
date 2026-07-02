@@ -1,4 +1,4 @@
-import React, {useMemo, useCallback} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {View} from 'react-native';
 import Text from '@components/Text';
 import {useCurrencyListActions} from '@hooks/useCurrencyList';
@@ -19,18 +19,19 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
     const theme = useTheme();
     const styles = useThemeStyles();
     const StyleUtils = useStyleUtils();
-    const {translate} = useLocalize();
     const {convertToDisplayString} = useCurrencyListActions();
+    const {isOffline} = useNetwork();
+
+    const {shouldUseNarrowLayout} = useResponsiveLayout();
+    const [displayString, setDisplayString] = useState<string>('');
+
+    useEffect(() => {
+        setDisplayString(convertToDisplayString(total, currency));
+    }, [total, currency, convertToDisplayString]);
 
     const valueTextStyle = useMemo(() => (isOffline ? [styles.textLabelSupporting, styles.labelStrong] : [styles.labelStrong]), [isOffline, styles]);
 
-    const displayTotal = useMemo(() => convertToDisplayString(total, currency), [convertToDisplayString, total, currency]);
 
-    const displayCount = useMemo(() => count, [count]);
-
-    return (
-        <View
-            style={[
     return (
         <View
             style={[
@@ -40,17 +41,17 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
                 styles.pv3,
                 styles.flexRow,
                 styles.gap3,
-        >
-            <View style={[styles.flexRow, styles.gap1]}>
-                <Text style={styles.textLabelSupporting}>{`${translate('common.expenses')}:`}</Text>
-                <Text style={valueTextStyle}>{displayCount}</Text>
             </View>
             <View style={[styles.flexRow, styles.gap1]}>
                 <Text style={styles.textLabelSupporting}>{`${translate('common.totalSpend')}:`}</Text>
-                <Text style={valueTextStyle}>{displayTotal}</Text>
+                <Text style={valueTextStyle}>{displayString}</Text>
             </View>
         </View>
     );
+            <View style={[styles.flexRow, styles.gap1]}>
+                <Text style={styles.textLabelSupporting}>{`${translate('common.totalSpend')}:`}</Text>
+                <Text style={valueTextStyle}>{convertToDisplayString(total, currency)}</Text>
+            </View>
         </View>
     );
 }
