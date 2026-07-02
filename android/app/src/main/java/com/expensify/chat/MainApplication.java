@@ -1,20 +1,53 @@
 package com.expensify.chat;
 
-import android.os.Build;
 import android.app.Application;
-import android.content.Context;
 import com.facebook.react.PackageList;
+import com.facebook.react.ReactApplication;
+import com.facebook.react.ReactNativeHost;
+import com.facebook.react.ReactPackage;
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
+import com.facebook.react.defaults.DefaultReactNativeHost;
+import com.facebook.soloader.SoLoader;
+import com.facebook.react.bridge.ReactApplicationContext;
+import java.util.List;
+
+public class MainApplication extends Application implements ReactApplication {
+
+  private final ReactNativeHost mReactNativeHost =
+      new DefaultReactNativeHost(this) {
+        @Override
+        protected List<ReactPackage> getPackages() {
+          List<ReactPackage> packages = new PackageList(this).getPackages();
+          return packages;
+        }
+
+        @Override
+        protected String getJSMainModuleName() {
+          return "index";
+        }
+
+        @Override
+        protected boolean isNewArchEnabled() {
+          return BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;
+        }
+
+        @Override
+        protected Boolean isHermesEnabled() {
+          return BuildConfig.IS_HERMES_ENABLED;
+        }
+      };
+
+  @Override
+  public ReactNativeHost getReactNativeHost() {
+    return mReactNativeHost;
+  }
+
   @Override
   public void onCreate() {
     super.onCreate();
-    // Fix for ART InvokeVirtualOrInterfaceWithVarArgs crash on Android 8/8.1 (API 26/27)
-    // This works around a known ART bug where varargs JNI calls can cause SIGSEGV
-    // when the class hierarchy is being resolved concurrently.
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1) {
-      // Force class loading to happen synchronously to avoid the race condition
-      System.setProperty("java.vm.usejit", "false");
-    }
-    
-    SoLoader.init(this, /* native exopackage */ false);
+    SoLoader.init(this, false);
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-      // If you opted-in for the New Architecture, we load the native entry point for this app.
+      DefaultNewArchitectureEntryPoint.invoke();
+    }
+  }
+}
