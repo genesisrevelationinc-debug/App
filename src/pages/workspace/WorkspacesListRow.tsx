@@ -1,102 +1,45 @@
-import {Str} from 'expensify-common';
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import {View} from 'react-native';
+import {InteractionManager, View, StyleSheet} from 'react-native';
 import {useOnyx} from 'react-native-onyx';
+import type {OnyxEntry} from 'react-native-onyx';
 import type {ValueOf} from 'type-fest';
-    const [isHovered, setIsHovered] = useState(false);
-    const [isSelected, setIsSelected] = useState(false);
-    const [isDisabled, setIsDisabled] = useState(false);
-    const [ownerPersonalDetails, setOwnerPersonalDetails] = useState<PersonalDetails | null>(null);
-    const ownerAccountID = useRef<number | null>(null);
-    const isFetchingDetails = useRef(false);
+import useThemeStyles from '@hooks/useThemeStyles';
+import {clearWorkspaceFlow} from '@libs/actions/Policy/Policy';
+import {clearErrors} from '@libs/actions/Policy/Policy';
+import {getPolicyOwnerDisplayName} from '@libs/PolicyUtils';
+import {isPolicyAdmin as isPolicyAdminPolicyUtils, getPolicyName, shouldShowPolicy as shouldShowPolicyUtils, isPolicyOwner as isPolicyOwnerUtils} from '@libs/PolicyUtils';
+import {getBrickRoadForPolicy} from '@libs/PolicyUtils';
+import {isArchivedReport, isChatThread, isMoneyRequestReport as isMoneyRequestReportUtils, isThreadFirstChat} from '@libs/ReportUtils';
+import type {JoinWorkspaceResolution} from '@src/types/onyx/Policy';
+import type {Errors, PendingAction} from '@src/types/onyx/OnyxCommon';
+import {isEmptyObject} from '@src/types/utils';
+import Text from '@components/Text';
 
-    const [allPolicies] = useOnyx(ONYXKEYS.COLLECTION.POLICY);
-    const [allPersonalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST);
-        return getPolicyEmployeeList(policy).length;
-    }, [policy]);
+type WorkspacesListRowProps = {
+    /** Item policy id */
+    const [isJoinRequestPending] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_JOIN_REQUEST_PENDING}${policyID}`, {initialValue: false});
+    const isJoinRequestPendingRef = useRef(isJoinRequestPending);
+    const [isPolicyAdmin] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, {selector: (p) => p?.role === 'admin'});
+    const [policy] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`);
 
-    const fetchOwnerDetails = useCallback(() => {
-        if (!policy?.ownerAccountID || ownerPersonalDetails || isFetchingDetails.current) {
-            return;
-        }
+    const isJoinRequestPendingValue = isJoinRequestPendingRef.current;
 
-        if (ownerAccountID.current === policy.ownerAccountID) {
-            return;
-        }
-
-        isFetchingDetails.current = true;
-        ownerAccountID.current = policy.ownerAccountID;
-
-        // Try to get from existing personal details first
-        const existingDetails = allPersonalDetails?.[policy.ownerAccountID];
-        if (existingDetails) {
-            setOwnerPersonalDetails(existingDetails);
-            isFetchingDetails.current = false;
-            return;
-        }
-
-        // Otherwise fetch from API
-        PersonalDetails.openPublicProfileView(policy.ownerAccountID)
-            .then((details) => {
-                if (details) {
-                    setOwnerPersonalDetails(details);
-                }
-            })
-            .catch(() => {
-                // Silently fail if we can't fetch owner details
-            })
-            .finally(() => {
-                isFetchingDetails.current = false;
-            });
-    }, [policy?.ownerAccountID, allPersonalDetails, ownerPersonalDetails]);
-
-    const getThreeDotsMenuItems = useCallback(() => {
-        if (!shouldUseFullTitle) {
-            return [];
         return null;
-    }, [isJoinRequestPending, shouldShowEmployeeCount, employeeCount, translate]);
+    }, [isSelected, isHovered, isSmallScreenWidth, shouldShowSelectButtonAsButton, shouldShowSelectButtonAsCheckbox, shouldShowSelectButtonAsToggle, styles, theme, translate]);
 
-    useEffect(() => {
-        if (isJoinRequestPending && policy?.ownerAccountID) {
-            fetchOwnerDetails();
-        }
-    }, [isJoinRequestPending, policy?.ownerAccountID, fetchOwnerDetails]);
+    const ownerDisplayName = getPolicyOwnerDisplayName(policy);
 
-    const titleComponent = useMemo(() => {
-        if (!shouldUseFullTitle) {
-            return (
-        );
-    }, [shouldUseFullTitle, title, isSelected, isHovered, isDisabled, isJoinRequestPending, shouldShowEmployeeCount, employeeCount, translate, styles, theme]);
-
-    const getOwnerDetails = useCallback(() => {
-        if (!isJoinRequestPending || !policy?.ownerAccountID) {
-            return null;
-        }
-            return null;
-        }
-
-        const ownerPersonalDetailsToUse = ownerPersonalDetails ?? allPersonalDetails?.[policy.ownerAccountID];
-        const ownerDisplayName = ownerPersonalDetails?.displayName ?? ownerPersonalDetails?.login ?? Str.removeSMSDomain(email);
-
-        return (
-                </Text>
-            </View>
-        );
-    }, [isJoinRequestPending, policy?.ownerAccountID, ownerPersonalDetails, allPersonalDetails, email, styles, theme]);
-
-    const rightNode = useMemo(() => {
-        if (!shouldUseFullTitle) {
-                        <View style={[styles.flexRow, styles.alignItemsCenter, styles.gap1]}>
-                            {titleComponent}
-                            {badge}
-                            {getOwnerDetails()}
-                        </View>
-                        {subtitle}
+    return (
+        <View
+            ref={ref}
+                            />
+                        )}
                     </View>
-        );
-    }, [
-        badge,
-        getOwnerDetails,
-        subtitle,
-        styles.alignItemsCenter,
-        styles.flexRow,
+                    {!!ownerDisplayName && (
+                        <Text style={[styles.textMicroSupporting, styles.mt1]}>
+                            {ownerDisplayName}
+                        </Text>
+                    )}
+                </View>
+            </PressableWithFeedback>
+            {!!selectButton && <View style={[styles.ml3, isSmallScreenWidth && styles.w100]}>{selectButton}</View>}
