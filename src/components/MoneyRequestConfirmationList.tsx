@@ -1,8 +1,4 @@
-import {useFocusEffect} from '@react-navigation/native';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {InteractionManager, View} from 'react-native';
-import type {ValueOf} from 'type-fest';
-import {useOnyx} from 'react-native-onyx';
+import useAttendees from '@hooks/useAttendees';
 import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
 import useIsInLandscapeMode from '@hooks/useIsInLandscapeMode';
 import useLocalize from '@hooks/useLocalize';
@@ -13,15 +9,18 @@ import usePolicyForTransaction from '@hooks/usePolicyForTransaction';
 import usePreferredPolicy from '@hooks/usePreferredPolicy';
 import usePrevious from '@hooks/usePrevious';
 import useThemeStyles from '@hooks/useThemeStyles';
+
 import {isCategoryDescriptionRequired} from '@libs/CategoryUtils';
 import DistanceRequestUtils from '@libs/DistanceRequestUtils';
 import {isMovingTransactionFromTrackExpense as isMovingTransactionFromTrackExpenseUtil} from '@libs/IOUUtils';
+import {shouldShowConfirmationDate} from '@libs/MoneyRequestUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import {hasEnabledOptions} from '@libs/OptionsListUtils';
-import {isTaxTrackingEnabled} from '@libs/PolicyUtils';
+import {arePolicyRulesEnabled, isTaxTrackingEnabled} from '@libs/PolicyUtils';
 import type {OptionData} from '@libs/ReportUtils';
 import {
     getCategory,
+    getCreated,
     getCurrency,
     getMerchant,
     getRateID,
@@ -30,12 +29,22 @@ import {
     isGPSDistanceRequest as isGPSDistanceRequestUtil,
     isManualDistanceRequest as isManualDistanceRequestUtil,
 } from '@libs/TransactionUtils';
+
 import type {IOUAction, IOUType} from '@src/CONST';
 import CONST from '@src/CONST';
 import ROUTES from '@src/ROUTES';
 import type * as OnyxTypes from '@src/types/onyx';
 import type {Participant} from '@src/types/onyx/IOU';
 import type {PaymentMethodType} from '@src/types/onyx/OriginalMessage';
+
+import type {OnyxEntry} from 'react-native-onyx';
+
+import {useIsFocused} from '@react-navigation/native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {View} from 'react-native';
+
+import type {MeasurableInput, SelectionListWithSectionsHandle} from './SelectionList/SelectionListWithSections/types';
+
 import {useDelegateNoAccessActions, useDelegateNoAccessState} from './DelegateNoAccessModalProvider';
 import buildConfirmAction from './MoneyRequestConfirmationList/confirmAction';
 import ConfirmationFooterContent from './MoneyRequestConfirmationList/ConfirmationFooterContent';
@@ -59,7 +68,6 @@ import TaxController from './MoneyRequestConfirmationList/TaxController';
 import MoneyRequestConfirmationListFooter from './MoneyRequestConfirmationListFooter';
 import BareUserListItem from './SelectionList/ListItem/BareUserListItem';
 import SelectionListWithSections from './SelectionList/SelectionListWithSections';
-import type {MeasurableInput, SelectionListWithSectionsHandle} from './SelectionList/SelectionListWithSections/types';
 
 type MoneyRequestConfirmationListProps = {
     /** Callback to inform parent modal of success */
@@ -120,13 +128,12 @@ type MoneyRequestConfirmationListProps = {
     isPerDiemRequest?: boolean;
 
     /** Whether the expense is a time expense */
-    const [didConfirm, setDidConfirm] = useState(false);
-    const [didSplitErrorAppear, setDidSplitErrorAppear] = useState(false);
-    const [isMerchantRequired, setIsMerchantRequired] = useState(false);
-    const [isMerchantModalVisible, setIsMerchantModalVisible] = useState(false);
-    const [shouldShowSmartScanFields, setShouldShowSmartScanFields] = useState(!isEditingSplitBill);
-    const [isLoading, setIsLoading] = useState(false);
-    const [formError, setFormError] = useState('');
+    isTimeRequest?: boolean;
+
+    /** Whether we're editing a split expense */
+    isEditingSplitBill?: boolean;
+
+    /** Whether we can navigate to receipt page */
     shouldDisplayReceipt?: boolean;
 
     /** Whether we should show the amount, date, and merchant fields. */
@@ -273,24 +280,12 @@ function MoneyRequestConfirmationList({
             policy,
             policyID,
             policyForMovingExpenses,
-        return !isValidSplit || (isMerchantRequired && !iouMerchant);
-    }, [isSplitBill, isValidSplit, isMerchantRequired, iouMerchant]);
+            isMovingTransactionFromTrackExpense,
+            isDistanceRequest,
+            iouAmount,
+            iouCurrencyCode,
+        });
 
-    // Re-validate split when returning from merchant modal
-    useEffect(() => {
-        if (!isMerchantModalVisible) {
-            return;
-        }
-        setIsMerchantModalVisible(false);
-        if (isSplitBill && !isValidSplit) {
-            setDidSplitErrorAppear(true);
-            setFormError('iou.error.invalidSplit');
-        }
-    }, [isMerchantModalVisible, isSplitBill, isValidSplit]);
-
-    const shouldShowReadOnlySplits = useMemo(() => {
-        if (!isSplitBill) {
-            return false;
     const shouldShowRateAutoUpdatedTooltip =
         isDistanceRequest && !!transaction?.comment?.customUnit?.rateAutoUpdated && !!transaction.created && DistanceRequestUtils.isRateEligibleForDate(mileageRate, transaction.created);
 
@@ -371,7 +366,7 @@ function MoneyRequestConfirmationList({
 
     const isCategoryRequired = !!policy?.requiresCategory && !isTypeInvoice;
 
-    const isDescriptionRequired = isCategoryDescriptionRequired(policyCategories, iouCategory, policy?.areRulesEnabled);
+    const isDescriptionRequired = isCategoryDescriptionRequired(policyCategories, iouCategory, arePolicyRulesEnabled(policy, policyCategories));
 
     // If completing a split expense fails, set didConfirm to false to allow the user to edit the fields again
     if (isEditingSplitBill && didConfirm) {
@@ -489,6 +484,8 @@ function MoneyRequestConfirmationList({
         isTimeRequest,
         routeError,
         isNewManualExpenseFlowEnabled,
+        isReadOnly,
+        shouldShowDate: shouldShowConfirmationDate(shouldShowSmartScanFields, isDistanceRequest),
     });
 
     const confirm = buildConfirmAction({
@@ -554,7 +551,18 @@ function MoneyRequestConfirmationList({
                 isPolicyExpenseChat={isPolicyExpenseChat}
                 expenseMode={{isDistance: isDistanceRequest, isTime: isTimeRequest, isInvoice: isTypeInvoice, isPerDiem: isPerDiemRequest}}
                 distanceFlags={{isManualDistanceRequest, isOdometerDistanceRequest, isGPSDistanceRequest}}
-                distanceData={{distance, hasRoute, unit, rate, distanceRateName: mileageRate.name, distanceRateCurrency: currency, shouldShowRateAutoUpdatedTooltip}}
+                distanceData={{
+                    distance,
+                    hasRoute,
+                    unit,
+                    rate,
+                    distanceRateName: mileageRate.name,
+                    distanceRateCurrency: currency,
+                    mileageRate,
+                    expenseDate: getCreated(transaction),
+                    customUnitRateID,
+                    shouldShowRateAutoUpdatedTooltip,
+                }}
                 amountDisplay={{amount: amountToBeUsed, formattedAmount, formattedAmountPerAttendee}}
                 requiredFlags={{isCategoryRequired, isMerchantRequired, isDescriptionRequired}}
                 visibilityFlags={{
@@ -577,8 +585,8 @@ function MoneyRequestConfirmationList({
                     onPDFPassword,
                 }}
                 compactControls={{showMoreFields, setShowMoreFields}}
-                onSubmitForm={confirm}
                 scrollFocusedInputIntoView={scrollFocusedInputIntoView}
+                onSubmitForm={confirm}
             />
         </View>
     );
@@ -667,10 +675,14 @@ function MoneyRequestConfirmationList({
 }
 
 export default MoneyRequestConfirmationList;
-                                    Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_MERCHANT.getRoute(action, iouType, transactionID, reportID, {backTo: currentRoute}));
-                                    return;
-                                }
-                                setIsMerchantModalVisible(true);
-                                Navigation.navigate(ROUTES.MONEY_REQUEST_STEP_MERCHANT.getRoute(action, iouType, transactionID, reportID, {backTo: currentRoute}));
-                            }}
-                            style={[styles.moneyRequestMenuItem, !isMerchantEmpty && styles.mt2]}
+            return;
+        }
+
+        // Prevent splitting when the sum of splits is not equal to the total amount
+        if (isSplitting && !isSplitRequestValid) {
+            return;
+        }
+
+        if (isSplitting) {
+            const policyExpenseChat = getPolicyExpenseChatWithPolicyID(participantAccountIDs, isPolicyExpenseChat);
+            if (policyExpenseChat) {
