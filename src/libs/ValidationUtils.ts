@@ -1,8 +1,8 @@
-// Card name validation - allows letters, numbers, spaces, and common name characters
-const CARD_NAME_REGEX = /^[a-zA-Z0-9\s\-'.]+$/;
+const CARD_NAME_REGEX = /^[a-zA-Z0-9\s]+$/;
+import type {LocalizedTranslate} from '@components/LocaleContextProvider';
 
-/**
- * Validates that a card name contains only valid characters
+import CONST from '@src/CONST';
+import type {Country} from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import type {OnyxFormKey} from '@src/ONYXKEYS';
 import type {Report, TaxRates} from '@src/types/onyx';
