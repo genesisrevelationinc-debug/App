@@ -1236,15 +1236,9 @@ function setWorkspaceReimbursement({
         return;
     }
 
-    // Clear any stale policy data before fetching to ensure we get the latest approver information
-    Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, null);
-
     const parameters: OpenWorkspaceWorkflowsPageParams = {
         policyID,
     };
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: ONYXKEYS.NVP_LAST_PAYMENT_METHOD,
-            value: {
                 [policyID]: {
                     expense: {
                         name: CONST.IOU.PAYMENT_TYPE.VBBA,
