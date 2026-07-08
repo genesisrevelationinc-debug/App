@@ -1,24 +1,25 @@
-/**
- * Validate that the given value is a valid card name.
- * Letters, numbers, and spaces are allowed.
- */
-function isValidCardName(value: string): boolean {
-    return /^[a-zA-Z0-9\s]+$/.test(value);
-}
+// ... existing code ...
+import CONST from '@src/CONST';
+
+// ... existing code ...
+import CONST from '@src/CONST';
+import type {Country} from '@src/CONST';
+import type {TranslationPaths} from '@src/languages/types';
+import type {OnyxFormKey} from '@src/ONYXKEYS';
 import type {Report, TaxRates} from '@src/types/onyx';
 
-import type {OnyxCollection} from 'react-native-onyx';
-
-import {addYears, endOfMonth, format, isAfter, isBefore, isSameDay, isValid, isWithinInterval, parse, parseISO, startOfDay, subYears} from 'date-fns';
-import {CONST as COMMON_CONST, PUBLIC_DOMAINS_SET, Str, TLD_REGEX, Url} from 'expensify-common';
-import isEmpty from 'lodash/isEmpty';
-import isObject from 'lodash/isObject';
+ */
+function isValidCardName(name: string): boolean {
+    // ... existing code ...
+    return /^[a-zA-Z0-9\s]+$/.test(name);
+    // ... existing code ...
+}
 
 import {getMonthFromExpirationDateString, getYearFromExpirationDateString} from './CardUtils';
-import DateUtils from './DateUtils';
-import {getPhoneNumberWithoutSpecialChars} from './LoginUtils';
-import {parsePhoneNumber} from './PhoneNumber';
-import StringUtils from './StringUtils';
+// ... existing code ...
+
+export {isValidCardName};
+export default {isValidCardName};
 
 type CountryZipRegex = {
     regex?: RegExp;
