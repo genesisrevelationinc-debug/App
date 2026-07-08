@@ -1,10 +1,10 @@
-const CARD_NAME_REGEX = /^[a-zA-Z0-9\s]+$/;
-import type {LocalizedTranslate} from '@components/LocaleContextProvider';
-
-import CONST from '@src/CONST';
-import type {Country} from '@src/CONST';
-import type {TranslationPaths} from '@src/languages/types';
-import type {OnyxFormKey} from '@src/ONYXKEYS';
+/**
+ * Validate that the given value is a valid card name.
+ * Letters, numbers, and spaces are allowed.
+ */
+function isValidCardName(value: string): boolean {
+    return /^[a-zA-Z0-9\s]+$/.test(value);
+}
 import type {Report, TaxRates} from '@src/types/onyx';
 
 import type {OnyxCollection} from 'react-native-onyx';
