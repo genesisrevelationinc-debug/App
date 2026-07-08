@@ -1,8 +1,8 @@
-import type {StackScreenProps} from '@react-navigation/stack';
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {View} from 'react-native';
-import type {OnyxEntry} from 'react-native-onyx';
-import {useOnyx} from 'react-native-onyx';
+import ApprovalWorkflowSection from '@components/ApprovalWorkflowSection';
+import Icon from '@components/Icon';
+import getBankIcon from '@components/Icon/BankIcons';
+import type {BankName} from '@components/Icon/BankIconsUtils';
+import {useLockedAccountActions, useLockedAccountState} from '@components/LockedAccountModalProvider';
 import MenuItem from '@components/MenuItem';
 import MenuItemWithTopDescription from '@components/MenuItemWithTopDescription';
 import {ModalActions} from '@components/Modal/Global/ModalContext';
@@ -74,13 +74,12 @@ import {getPaymentMethods} from '@userActions/PaymentMethods';
 import {navigateToBankAccountRoute} from '@userActions/ReimbursementAccount';
 import {navigateToConciergeChat} from '@userActions/Report';
 
-    const [personalDetails] = useOnyx(ONYXKEYS.PERSONAL_DETAILS_LIST);
-    const [session] = useOnyx(ONYXKEYS.SESSION);
-    const [allPolicies] = useOnyx(ONYXKEYS.COLLECTION.POLICY);
-    const [isOffline] = useOnyx(ONYXKEYS.NETWORK, {selector: (network) => network?.isOffline});
+import CONST from '@src/CONST';
+import ONYXKEYS from '@src/ONYXKEYS';
+import ROUTES from '@src/ROUTES';
+import type SCREENS from '@src/SCREENS';
+import type ApprovalWorkflow from '@src/types/onyx/ApprovalWorkflow';
 
-    const policy = usePolicy(policyID);
-    const [isLoading, setIsLoading] = useState(false);
 import type {TupleToUnion} from 'type-fest';
 
 import {hasSeenTourSelector} from '@selectors/Onboarding';
@@ -90,6 +89,7 @@ import {View} from 'react-native';
 
 import type {ToggleSettingOptionRowProps} from './ToggleSettingsOptionRow';
 
+import ToggleSettingOptionRow from './ToggleSettingsOptionRow';
     const [isUnapproveModalVisible, setIsUnapproveModalVisible] = useState(false);
     const [isTurnOffModalVisible, setIsTurnOffModalVisible] = useState(false);
 
@@ -97,17 +97,6 @@ import type {ToggleSettingOptionRowProps} from './ToggleSettingsOptionRow';
     useEffect(() => {
         if (isOffline || !policyID) {
             return;
-        }
-
-        // When coming back online, refresh the policy to get the latest approver data
-        Policy.openWorkspaceWorkflowsPage(policyID);
-    }, [isOffline, policyID]);
-
-    const toggleUnapproveModal = useCallback(() => {
-        setIsUnapproveModalVisible((prev) => !prev);
-    }, []);
-function WorkflowNoResultsView({message, shouldShow, searchValue}: {message: string; shouldShow: boolean; searchValue: string}) {
-    const styles = useThemeStyles();
 
     useDebouncedAccessibilityAnnouncement(message, shouldShow, searchValue);
 
