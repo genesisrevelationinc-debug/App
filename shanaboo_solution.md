@@ -1,173 +1,133 @@
- ```diff
---- a/src/components/MoneyRequestConfirmationList.tsx
-+++ b/src/components/MoneyRequestConfirmationList.tsx
-@@ -123,6 +123,7 @@ type MoneyRequestConfirmationListProps = {
-     isReadOnly?: boolean;
-     isPolicyExpenseChat?: boolean;
-     isTaxAmountInvalid?: boolean;
-+    isSplitAmountInvalid?: boolean;
-     isTaxTrackingEnabled?: boolean;
-     isTypeInvoice?: boolean;
-     isTypeSend?: boolean;
-@@ -196,6 +197,7 @@ function MoneyRequestConfirmationList({
-     isReadOnly = false,
-     isPolicyExpenseChat = false,
-     isTaxAmountInvalid = false,
-+    isSplitAmountInvalid = false,
-     isTaxTrackingEnabled = false,
-     isTypeInvoice = false,
-     isTypeSend = false,
-@@ -1044,7 +1046,7 @@ function MoneyRequestConfirmationList({
+Based on the issue description, the bug is about split expense validation - when a user enters 0 for all splits and then saves a merchant, the validation error disappears and allows splitting with an invalid total. This suggests the validation state is being reset when the merchant is saved.
+
+Let me look at the relevant files in the repository structure to find the split expense confirmation page and its validation logic.
+
+```diff
+--- a/src/pages/iou/request/step/IOURequestStepConfirmation.tsx
++++ b/src/pages/iou/request/step/IOURequestStepConfirmation.tsx
+@@ -1,6 +1,7 @@
+ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+ import {View} from 'react-native';
+ import {useOnyx} from 'react-native-onyx';
++import lodashIsEqual from 'lodash/isEqual';
+ import type {OnyxEntry} from 'react-native-onyx';
+ import ConfirmModal from '@components/ConfirmModal';
+ import FormProvider from '@components/Form';
+@@ -9,6 +10,7 @@
+ import useLocalize from '@hooks/useLocalize';
+ import useNetwork from '@hooks/useNetwork';
+ import useThemeStyles from '@hooks/useThemeStyles';
++import usePrevious from '@hooks/usePrevious';
+ import Navigation from '@libs/Navigation/Navigation';
+ import * as IOU from '@userActions/IOU';
+ import * as TransactionUtils from '@libs/TransactionUtils';
+@@ -17,6 +19,7 @@
+ import ONYXKEYS from '@src/ONYXKEYS';
+ import ROUTES from '@src/ROUTES';
+ import type {Route} from '@src/ROUTES';
++import type {SplitShares} from '@src/types/onyx/Transaction';
+ 
+ const IOURequestStepConfirmation = ({route}: {route: Route}) => {
+     const {translate} = useLocalize();
+@@ -28,6 +31,7 @@
+     const [transaction] = useOnyx(`${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}`);
+     const [draftTransaction] = useOnyx(`${ONYXKEYS.COLLECTION.TRANSACTION_DRAFT}${transactionID}`);
+     const [policy] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${transaction?.policyID ?? '-1'}`);
++    const [prevDraftTransaction, setPrevDraftTransaction] = useState<OnyxEntry<typeof draftTransaction>>(draftTransaction);
+ 
+     const styles = useThemeStyles();
+     const {isOffline} = useNetwork();
+@@ -36,6 +40,7 @@
+     const isPolicyExpenseChat = useMemo(() => ReportUtils.isPolicyExpenseChat(chatReport), [chatReport]);
+     const isScanRequest = useMemo(() => TransactionUtils.isScanRequest(transaction), [transaction]);
+     const isPerDiemRequest = useMemo(() => TransactionUtils.isPerDiemRequest(transaction), [transaction]);
++    const prevShares = usePrevious(draftTransaction?.splitShares);
+ 
+     const splitAmount = useMemo(() => {
+         if (!draftTransaction?.splitShares) {
+@@ -49,6 +54,7 @@
+         return sum;
+     }, [draftTransaction?.splitShares]);
+ 
++    const [hasInvalidSplit, setHasInvalidSplit] = useState(false);
+     const [merchantError, setMerchantError] = useState(false);
+     const [shouldShowMerchantError, setShouldShowMerchantError] = useState(false);
+ 
+@@ -56,6 +62,25 @@
+         setShouldShowMerchantError(false);
+     }, []);
+ 
++    useEffect(() => {
++        if (!draftTransaction?.splitShares || !draftTransaction?.amount) {
++            setHasInvalidSplit(false);
++            return;
++        }
++
++        const totalAmount = IOUUtils.calculateAmount(prevDraftTransaction?.amount ?? draftTransaction.amount, prevDraftTransaction?.currency ?? draftTransaction.currency, false);
++        const splitSum = Object.values(draftTransaction.splitShares).reduce((sum: number, share: SplitShares) => sum + (share.amount ?? 0), 0);
++        const isInvalid = Math.abs(totalAmount - splitSum) > 0.01;
++        setHasInvalidSplit(isInvalid);
++    }, [draftTransaction?.splitShares, draftTransaction?.amount, draftTransaction?.currency, prevDraftTransaction]);
++
++    useEffect(() => {
++        if (!lodashIsEqual(draftTransaction, prevDraftTransaction)) {
++            setPrevDraftTransaction(draftTransaction);
++        }
++    }, [draftTransaction, prevDraftTransaction]);
++
++    const isSplitValid = useMemo(() => !hasInvalidSplit, [hasInvalidSplit]);
++
+     const navigateBack = useCallback(() => {
+         Navigation.goBack();
+     }, []);
+@@ -63,7 +88,7 @@
+     const splitOrRequestMoney = useCallback(() => {
+         if (!transaction || !draftTransaction) {
+             return;
+-        }
++        }   
+         if (isPerDiemRequest) {
+             IOU.createPerDiemRequest(transaction, draftTransaction);
+             return;
+@@ -71,6 +96,10 @@
+         if (isScanRequest) {
+             IOU.replaceReceipt(transaction, draftTransaction);
+         }
++        if (hasInvalidSplit) {
++            setShouldShowMerchantError(true);
++            return;
++        }
+         IOU.splitBill(
+             chatReport,
+             draftTransaction,
+@@ -78,7 +107,7 @@
+             draftTransaction.amount,
+             draftTransaction.currency,
+         );
+-    }, [transaction, draftTransaction, chatReport, isScanRequest, isPerDiemRequest]);
++    }, [transaction, draftTransaction, chatReport, isScanRequest, isPerDiemRequest, hasInvalidSplit]);
+ 
+     const confirm = useCallback(() => {
+         if (!draftTransaction) {
+@@ -86,6 +115,10 @@
+         }
+         if (draftTransaction.merchant === '' && !isScanRequest && !isPerDiemRequest) {
+             setShouldShowMerchantError(true);
++            return;
++        }
++        if (hasInvalidSplit) {
++            setShouldShowMerchantError(true);
              return;
          }
+         splitOrRequestMoney();
+@@ -93,7 +126,7 @@
+             setShouldShowMerchantError(false);
+             setMerchantError(false);
+         }
+-    }, [draftTransaction, splitOrRequestMoney, isScanRequest, isPerDiemRequest]);
++    }, [draftTransaction, splitOrRequestMoney, isScanRequest, isPerDiemRequest, hasInvalidSplit]);
  
--        if (isSplittingWaypoints || isMerchantRequired && !iouMerchant) {
-+        if (isSplittingWaypoints || isMerchantRequired && !iouMerchant || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
+     const isMerchantRequired = useMemo(() => {
+         if (isScanRequest || isPerDiemRequest) {
+@@ -101,6 +134,7 @@
          }
-@@ -1072,6 +1074,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1103,7 +1106,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1129,6 +1132,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1162,7 +1166,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1188,6 +1192,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1221,7 +1226,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1247,6 +1252,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1280,7 +1286,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1306,6 +1312,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1339,7 +1346,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1365,6 +1372,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1398,7 +1406,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1424,6 +1432,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1457,7 +1466,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1483,6 +1492,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1516,7 +1526,7 @@ function MoneyRequestConfirmationList({
-             return;
-         }
- 
--        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant)) {
-+        if (isSplittingWaypoints || (isMerchantRequired && !iouMerchant) || isSplitAmountInvalid) {
-             return_initiallyDisabled = true;
-             return return_initiallyDisabled;
-         }
-@@ -1542,6 +1552,7 @@ function MoneyRequestConfirmationList({
-         isMerchantRequired,
-         iouMerchant,
-         isSplittingWaypoints,
-+        isSplitAmountInvalid,
-         isMerchantTouched2,
-         isEditingSplitBill,
-         isPolicyExpenseChat,
-@@ -1575
