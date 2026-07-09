@@ -1,16 +1,15 @@
-import React, {useMemo} from 'react';
-import {View} from 'react-native';
 import Text from '@components/Text';
+import React, {useEffect, useMemo, useState} from 'react';
 import {useCurrencyListActions} from '@hooks/useCurrencyList';
 import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
-import useNetwork from '@hooks/useNetwork';
+import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useStyleUtils from '@hooks/useStyleUtils';
 import useTheme from '@hooks/useTheme';
 import useThemeStyles from '@hooks/useThemeStyles';
+import {View} from 'react-native';
 
 type SearchPageFooterProps = {
-    count: number | undefined;
     count: number | undefined;
     total: number | undefined;
     currency: string | undefined;
@@ -22,14 +21,19 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
     const StyleUtils = useStyleUtils();
     const {translate} = useLocalize();
     const {convertToDisplayString} = useCurrencyListActions();
-
+    const {isOffline} = useNetwork();
     const {shouldUseNarrowLayout} = useResponsiveLayout();
 
-    const displayTotal = useMemo(() => convertToDisplayString(total, currency), [convertToDisplayString, total, currency]);
-
     const valueTextStyle = useMemo(() => (isOffline ? [styles.textLabelSupporting, styles.labelStrong] : [styles.labelStrong]), [isOffline, styles]);
+    const [displayString, setDisplayString] = useState<string>('');
 
-    return (
+    useEffect(() => {
+        if (total !== undefined && currency !== undefined) {
+            const result = convertToDisplayString(total, currency);
+            setDisplayString(result);
+        }
+    }, [total, currency, convertToDisplayString]);
+
     return (
         <View
             style={[
@@ -41,16 +45,16 @@ function SearchPageFooter({count, total, currency}: SearchPageFooterProps) {
                 styles.gap3,
                 StyleUtils.getBackgroundColorStyle(theme.appBG),
             ]}
+        >
+            <View style={[styles.flexRow, styles.gap1]}>
+                <Text style={styles.textLabelSupporting}>{`${translate('common.expenses')}:`}</Text>
             </View>
             <View style={[styles.flexRow, styles.gap1]}>
                 <Text style={styles.textLabelSupporting}>{`${translate('common.totalSpend')}:`}</Text>
-                <Text style={valueTextStyle}>{displayTotal}</Text>
+                <Text style={valueTextStyle}>{displayString}</Text>
             </View>
         </View>
     );
-                <Text style={valueTextStyle}>{convertToDisplayString(total, currency)}</Text>
-            </View>
-        </View>
     );
 }
 
