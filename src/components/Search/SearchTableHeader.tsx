@@ -1,18 +1,16 @@
-import React from 'react';
-import {View} from 'react-native';
-import Text from '@components/Text';
-import type {SearchColumnType} from '@libs/SearchUtils';
+import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
+import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useThemeStyles from '@hooks/useThemeStyles';
-import useLocalize from '@hooks/useLocalize';
+
+import CONST from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import type {SearchDataTypes} from '@src/types/onyx/SearchResults';
-type SearchTableHeaderProps = {
-    /** The column name to display */
-    columnName: string;
-    columnType?: SearchColumnType;
-};
+import type IconAsset from '@src/types/utils/IconAsset';
 
-function SearchTableHeader({columnName}: SearchTableHeaderProps) {
+import type {ValueOf} from 'type-fest';
+
+import React, {useCallback, useMemo} from 'react';
+
 import type {SearchColumnType, SearchGroupBy, SearchSortBy, SortOrder} from './types';
     const {translate} = useLocalize();
 
