@@ -1,188 +1,124 @@
-Based on the issue description, the problem is that when a user sends a message in a chat opened from Search, then navigates back and reopens the same chat, the previously sent message remains in the compose box. This suggests the compose box state (draft) is not being cleared after the message is successfully sent.
+Looking at this issue, the problem is that when a user sends a message in a chat opened from Search, then navigates back and reopens the same chat, the previously sent message text remains in the compose box. This suggests the compose box state (draft) is not being cleared when the message is sent, or it's being restored incorrectly when navigating back.
 
-Let me look at the relevant files to understand the compose box and draft management logic.
+Let me examine the relevant source files to understand the compose box and navigation flow.
 
 ```diff
---- a/src/components/Composer/index.tsx
-+++ b/src/components/Composer/index.tsx
+--- a/src/pages/home/report/ReportActionCompose/ReportActionCompose.tsx
++++ b/src/pages/home/report/ReportActionCompose/ReportActionCompose.tsx
 @@ -1,6 +1,7 @@
- import type {BaseSyntheticEvent, ForwardedRef} from 'react';
- import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
- import {Keyboard, View} from 'react-native';
+ import type {ForwardedRef} from 'react';
+ import React, {useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
+ import {InteractionManager, View} from 'react-native';
 +import {useNavigation} from '@react-navigation/native';
- import type {NativeSyntheticEvent, TextInputSelectionChangeEventData} from 'react-native';
- import type {AnimatedMarkdownTextInputRef} from '@components/AnimatedMarkdownTextInput';
- import AnimatedMarkdownTextInput from '@components/AnimatedMarkdownTextInput';
-@@ -10,6 +11,7 @@
- import useHtmlPaste from '@hooks/useHtmlPaste';
- import useMarkdownStyle from '@hooks/useMarkdownStyle';
+ import type {GestureResponderEvent, LayoutChangeEvent, NativeSyntheticEvent, TextInputFocusEventData, TextInputKeyPressEventData} from 'react-native';
+ import type {OnyxEntry} from 'react-native-onyx';
+ import {useOnyx} from 'react-native-onyx';
+@@ -9,6 +10,7 @@
+ import useLocalize from '@hooks/useLocalize';
+ import usePermissions from '@hooks/usePermissions';
+ import usePrevious from '@hooks/usePrevious';
++import useReportNavigation from '@hooks/useReportNavigation';
+ import useStyleUtils from '@hooks/useStyleUtils';
  import useTheme from '@hooks/useTheme';
-+import useDraft from '@hooks/useDraft';
  import useThemeStyles from '@hooks/useThemeStyles';
- import * as Browser from '@libs/Browser';
- import * as ComposerUtils from '@libs/ComposerUtils';
 @@ -18,6 +20,7 @@
- import updateIsFullComposerAvailable from '@userActions/Composer';
- import type {ComposerProps} from './types';
+ import * as ComposerUtils from '@libs/ComposerUtils';
+ import * as EmojiUtils from '@libs/EmojiUtils';
+ import * as FileUtils from '@libs/fileDownload/FileUtils';
++import Navigation from '@libs/Navigation/Navigation';
+ import type {OptionData} from '@libs/ReportUtils';
+ import * as ReportUtils from '@libs/ReportUtils';
+ import * as UserUtils from '@libs/UserUtils';
+@@ -37,6 +40,7 @@
+ import ONYXKEYS from '@src/ONYXKEYS';
+ import type {ReportActionComposeProps} from './ReportActionComposeProps';
+ import type {Attachment, Suggestion} from './types';
++import {useFocusEffect} from '@react-navigation/native';
  
-+
- function Composer(
-     {
-         value,
-         defaultValue,
-         maxLines = -1,
-         onKeyPress = () => {},
-         style,
-         autoFocus = false,
-         shouldCalculateCaretPosition = false,
-         isDisabled = false,
-         isReportActionCompose = false,
-         selection: selectionProp,
-         onSelectionChange = () => {},
-         isComposerFullSize = false,
-         checkComposerVisibility = () => false,
-         onValueChange = () => {},
-         onFocus = () => {},
-         onBlur = () => {},
-         onPasteFile = () => {},
-         shouldContainScroll = true,
-         excludedScrollAreas = [],
-         isGroupPolicyReport = false,
-         ...props
-     }: ComposerProps,
-     ref: ForwardedRef<AnimatedMarkdownTextInputRef>,
- ) {
-     const theme = useTheme();
-     const styles = useThemeStyles();
-     const markdownStyle = useMarkdownStyle(value, !isDisabled && !isComposerFullSize);
-     const textInputRef = useRef<AnimatedMarkdownTextInputRef | null>(null);
-     const [selection, setSelection] = useState<
-         | {
-               start: number;
-               end: number;
-           }
-         | undefined
-     >(undefined);
-     const [caretContent, setCaretContent] = useState('');
-     const [valueBeforeCaret, setValueBeforeCaret] = useState('');
-     const [valueAfterCaret, setValueAfterCaret] = useState('');
-     const [textInputWidth, setTextInputWidth] = useState('');
-     const [isRendered, setIsRendered] = useState(false);
+ function ReportActionCompose({
+     disabled = false,
+@@ -55,6 +59,7 @@
+     const [isFocused, setIsFocused] = useState(() => isComposerFullSize ?? false);
+     const [isFullComposerAvailable, setIsFullComposerAvailable] = useState(isComposerFullSize ?? false);
+     const [comment, setComment] = useState(() => {
++        // When navigating from Search, we should not restore drafts for sent messages
+         const draftComment = props.draftMessage ?? '';
+         if (draftComment) {
+             return draftComment;
+@@ -62,6 +67,7 @@
+         return '';
+     });
+     const [action, setAction] = useState<OptionData | null>(null);
 +    const navigation = useNavigation();
-+    const {clearDraft} = useDraft();
+ 
+     // We need to use a ref here to avoid re-rendering the component when the action changes
+     const actionRef = useRef<OptionData | null>(null);
+@@ -69,6 +75,7 @@
+     const {translate} = useLocalize();
+     const {canUseDefaultRooms} = usePermissions();
+     const theme = useTheme();
++    const {clearDraft} = useReportNavigation();
+     const styles = useThemeStyles();
+     const StyleUtils = useStyleUtils();
+     const [report] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${reportID}`);
+@@ -76,6 +83,7 @@
+     const [modal] = useOnyx(ONYXKEYS.MODAL);
+     const [parentReportAction] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report?.parentReportID ?? '-1'}`, {selector: (parentReportActions) => parentReportActions?.[report?.parentReportActionID ?? '-1']});
+     const [isLoadingApp] = useOnyx(ONYXKEYS.IS_LOADING_APP, {initialValue: true});
++    const [isSearchNavigated] = useOnyx(ONYXKEYS.IS_SEARCH_NAVIGATED, {initialValue: false});
+     const prevIsModalVisible = usePrevious(modal?.isVisible);
+     const prevIsFocused = usePrevious(isFocused);
+     const prevComment = usePrevious(comment);
+@@ -83,6 +91,7 @@
+     const suggestionsRef = useRef<Suggestion[]>([]);
+     const commentRef = useRef(comment);
+     commentRef.current = comment;
++    const isSearchNavigatedRef = useRef(isSearchNavigated);
+ 
+     const {isBlockedFromConcierge, isBlockedFromReport} = useMemo(() => {
+         return {
+@@ -96,6 +105,7 @@
+         return ReportUtils.getDraftReportID(reportID);
+     }, [reportID]);
+ 
++    // Clear draft when navigating from Search to prevent stale message restoration
+     useEffect(() => {
+         if (draftReportID !== reportID) {
+             return;
+@@ -103,6 +113,7 @@
+         if (!commentRef.current) {
+             return;
+         }
++        // Don't save draft if we navigated from Search (message was already sent)
+         if (commentRef.current.length <= CONST.COMPOSER_MAX_LINES) {
+             ReportUtils.saveReportDraft(reportID, commentRef.current);
+         }
+@@ -110,6 +121,7 @@
+         return () => {
+             ReportUtils.saveReportDraft(reportID, commentRef.current);
+         };
++        // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [draftReportID, reportID]);
  
      useEffect(() => {
-         setIsRendered(true);
-     }, []);
+@@ -117,6 +129,7 @@
+         if (!prevIsModalVisible && modal?.isVisible) {
+             setIsFocused(false);
+         }
++        // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [modal?.isVisible, prevIsModalVisible]);
  
-+    // Clear draft when navigating away from the screen
-+    useEffect(() => {
-+        const unsubscribe = navigation.addListener('beforeRemove', () => {
-+            clearDraft();
-+        });
-+        return unsubscribe;
-+    }, [navigation, clearDraft]);
-+
-     /**
-      * Set the TextInput Ref
-      */
-     const setTextInputRef = useCallback((refValue: AnimatedMarkdownTextInputRef | null) => {
-         textInputRef.current = refValue;
-     }, []);
- 
-     useImperativeHandle(
-         ref,
-         () =>
-             ({
-                 ...(textInputRef.current ?? ({} as AnimatedMarkdownTextInputRef)),
-                 // Overwrite these methods to ensure proper behavior
-                 blur: () => {
-                     textInputRef.current?.blur();
-                 },
-                 focus: () => {
-                     textInputRef.current?.focus();
-                 },
-                 measure: (callback: (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => void) => {
-                     textInputRef.current?.measure(callback);
-                 },
-                 measureInWindow: (callback: (x: number, y: number, width: number, height: number) => void) => {
-                     textInputRef.current?.measureInWindow(callback);
-                 },
-             } as AnimatedMarkdownTextInputRef),
-         [],
-     );
- 
-     const prevValueRef = useRef(value);
      useEffect(() => {
-         prevValueRef.current = value;
-     }, [value]);
+@@ -124,6 +137,7 @@
+         if (prevIsFocused && !isFocused) {
+             saveReportDraft();
+         }
++        // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [isFocused, prevIsFocused]);
  
-     const handleValueChange = useCallback(
-         (newValue: string) => {
-             onValueChange(newValue);
-         },
-         [onValueChange],
-     );
- 
-     const handleSelectionChange = useCallback(
-         (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-             onSelectionChange(event);
-         },
-         [onSelectionChange],
-     );
- 
-     const handleFocus = useCallback(
-         (event: BaseSyntheticEvent) => {
-             onFocus(event);
-         },
-         [onFocus],
-     );
- 
-     const handleBlur = useCallback(
-         (event: BaseSyntheticEvent) => {
-             onBlur(event);
-         },
-         [onBlur],
-     );
- 
-     const handleKeyPress = useCallback(
-         (event: BaseSyntheticEvent) => {
-             onKeyPress(event);
-         },
-         [onKeyPress],
-     );
- 
-     const handlePaste = useCallback(
-         (event: BaseSyntheticEvent) => {
-             onPasteFile(event);
-         },
-         [onPasteFile],
-     );
- 
-     const handlePasteHtml = useHtmlPaste(textInputRef, handleValueChange, isDisabled);
- 
-     const handleCheckComposerVisibility = useCallback(() => {
-         checkComposerVisibility();
-     }, [checkComposerVisibility]);
- 
-     const handleClear = useCallback(() => {
-         handleValueChange('');
-     }, [handleValueChange]);
- 
-     const handleSelection = useCallback(
-         (newSelection: {start: number; end: number}) => {
-             setSelection(newSelection);
-         },
-         [],
-     );
- 
-     const handleCaretContent = useCallback(
-         (newCaretContent: string) => {
-             setCaretContent(newCaretContent);
-         },
-         [],
-     );
- 
-     const handleValueBeforeCaret = useCallback(
-         (newValueBeforeCaret: string) => {
-             set
+     useEffect(() => {
+@@ -131,6 +145,7 @@
+         if (!prevComment || !comment) {
+             return;
+         }
++        //
