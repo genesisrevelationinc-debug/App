@@ -1,9 +1,7 @@
-    // Clear the draft when the component unmounts (user navigates away)
+    // Clear draft when component unmounts to prevent stale text on re-entry
     useEffect(() => {
         return () => {
-            if (reportID) {
-                Report.saveReportDraft(reportID, '');
-            }
+            Report.clearReportDraft(reportID);
         };
     }, [reportID]);
 
@@ -12,11 +10,9 @@
             if (e) {
                 e.preventDefault();
             }
-            // Clear the draft immediately when sending
-            if (reportID) {
-                Report.saveReportDraft(reportID, '');
-            }
-            // ... rest of submit logic
+            // Clear draft immediately when message is sent
+            Report.clearReportDraft(reportID);
+            // ... existing submit logic
         },
-        [/* deps */, reportID],
+        [/* existing deps */, reportID],
     );
