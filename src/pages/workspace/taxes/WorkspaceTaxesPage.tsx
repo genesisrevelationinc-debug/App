@@ -67,13 +67,13 @@ function WorkspaceTaxesPage({
             ...value,
             key,
     const shouldDisplayButtonsInSeparateLine = useShouldDisplayButtonsInSeparateLine();
-    const styles = useThemeStyles();
-    const {translate, localeCompare} = useLocalize();
-    const [selectedTaxesIDs, setSelectedTaxesIDs] = useState<string[]>([]);
-    const {showConfirmModal} = useConfirmModal();
-    const isMobileSelectionModeEnabled = useMobileSelectionMode();
-    const {canWrite: canWriteTaxes, showReadOnlyModal, withReadOnlyFallback} = usePolicyFeatureWriteAccess(policy, CONST.POLICY.POLICY_FEATURE.TAXES);
-    const defaultExternalID = policy?.taxRates?.defaultExternalID;
+            pendingAction: policyTaxRates.pendingFields?.taxes?.[key] ?? policyTaxRates.pendingAction,
+            errors: value.errors ?? policyTaxRates.errorFields?.taxes?.[key] ?? undefined,
+        }));
+    }, [policyTaxRates, allTaxRates]);
+
+    const customTaxRates = useMemo(() => taxRatesList.filter((taxRate) => taxRate.name !== CONST.DEFAULT_TAX_RATES.DEFAULT_TAX_RATE_NAME), [taxRatesList]);
+    const defaultTaxRate = useMemo(() => taxRatesList.find((taxRate) => taxRate.name === CONST.DEFAULT_TAX_RATES.DEFAULT_TAX_RATE_NAME), [taxRatesList]);
     const foreignTaxDefault = policy?.taxRates?.foreignTaxDefault;
     const hasAccountingConnections = hasAccountingConnectionsPolicyUtils(policy);
     const [connectionSyncProgress] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CONNECTION_SYNC_PROGRESS}${policy?.id}`);
