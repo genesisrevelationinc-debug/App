@@ -1,8 +1,8 @@
-import type {ReportExportType} from '@components/ButtonWithDropdownMenu/types';
-import type {LocaleContextProps, LocalizedTranslate} from '@components/LocaleContextProvider';
-
-import type PolicyData from '@hooks/usePolicyData/types';
-
+import Onyx from 'react-native-onyx';
+import type {OnyxEntry, OnyxUpdate} from 'react-native-onyx';
+import * as API from '@libs/API';
+import {WRITE_COMMANDS} from '@libs/API/types';
+import ONYXKEYS from '@src/ONYXKEYS';
 import * as API from '@libs/API';
 import type {
     AddBillingCardAndRequestWorkspaceOwnerChangeParams,
@@ -113,7 +113,7 @@ import type {
     Beta,
     CardFeeds,
     API.write(
-        'DeletePolicyAgent',
+        WRITE_COMMANDS.DELETE_POLICY_AGENT,
         {
             policyID,
             email: agentEmail,
