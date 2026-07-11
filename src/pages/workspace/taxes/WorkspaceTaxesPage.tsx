@@ -1,10 +1,9 @@
-import React, {useCallback, useMemo, useState} from 'react';
-import {View} from 'react-native';
-import {useOnyx} from 'react-native-onyx';
-import type {OnyxEntry} from 'react-native-onyx';
-import type {ValueOf} from 'type-fest';
+import ActivityIndicator from '@components/ActivityIndicator';
 import Button from '@components/Button';
-import ConfirmModal from '@components/ConfirmModal';
+import ButtonWithDropdownMenu from '@components/ButtonWithDropdownMenu';
+import type {DropdownOption, WorkspaceTaxRatesBulkActionType} from '@components/ButtonWithDropdownMenu/types';
+import HeaderWithBackButton from '@components/HeaderWithBackButton';
+import ImportedFromAccountingSoftware from '@components/ImportedFromAccountingSoftware';
 import {ModalActions} from '@components/Modal/Global/ModalContext';
 import ScreenWrapper from '@components/ScreenWrapper';
 import type {WorkspaceTaxTableRowData} from '@components/Tables/WorkspaceTaxesTable';
@@ -14,22 +13,20 @@ import Text from '@components/Text';
 import useCleanupSelectedOptions from '@hooks/useCleanupSelectedOptions';
 import useConfirmModal from '@hooks/useConfirmModal';
 import {useMemoizedLazyExpensifyIcons, useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
+import useLocalize from '@hooks/useLocalize';
+import useMobileSelectionMode from '@hooks/useMobileSelectionMode';
 import useNetwork from '@hooks/useNetwork';
-import useThemeStyles from '@hooks/useThemeStyles';
-import {setPolicyTaxRateEnabled, deletePolicyTaxRate} from '@libs/actions/TaxRate';
-import {getAllTaxRates} from '@libs/PolicyUtils';
-import Navigation from '@libs/Navigation/Navigation';
-import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
-import type {SettingsSplitNavigatorParamList} from '@libs/Navigation/types';
+import useOnyx from '@hooks/useOnyx';
+import usePolicyFeatureWriteAccess from '@hooks/usePolicyFeatureWriteAccess';
+import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useSearchBackPress from '@hooks/useSearchBackPress';
 import useShouldDisplayButtonsInSeparateLine from '@hooks/useShouldDisplayButtonsInSeparateLine';
-import ONYXKEYS from '@src/ONYXKEYS';
-import ROUTES from '@src/ROUTES';
-import type SCREENS from '@src/SCREENS';
-import type {PolicyTaxRate, PolicyTaxRates} from '@src/types/onyx';
-import type {TaxRate} from '@src/types/onyx/Policy';
-import type IconAsset from '@src/types/utils/IconAsset';
+import useThemeStyles from '@hooks/useThemeStyles';
+import useWorkspaceDocumentTitle from '@hooks/useWorkspaceDocumentTitle';
 
+import {isConnectionInProgress, isConnectionUnverified} from '@libs/actions/connections';
+import {turnOffMobileSelectionMode} from '@libs/actions/MobileSelectionMode';
+import {clearTaxRateError, deletePolicyTaxes, setPolicyTaxesEnabled} from '@libs/actions/TaxRate';
 import {getLatestErrorFieldForAnyField} from '@libs/ErrorUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
@@ -52,13 +49,12 @@ import {openPolicyTaxesPage} from '@userActions/Policy/Policy';
 
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
-    const [policy] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${route.params.policyID}`);
-    const [policyTaxRates] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_TAX_RATES}${route.params.policyID}`);
-    const [betas] = useOnyx(ONYXKEYS.BETAS);
-    const [allTaxRates] = useOnyx(ONYXKEYS.COLLECTION.POLICY_TAX_RATES);
-    const styles = useThemeStyles();
-    const {translate} = useLocalize();
-    const {isOffline} = useNetwork();
+import ROUTES from '@src/ROUTES';
+import type SCREENS from '@src/SCREENS';
+import type {TaxRate} from '@src/types/onyx';
+
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {View} from 'react-native';
 
 type WorkspaceTaxesPageProps = WithPolicyAndFullscreenLoadingProps & PlatformStackScreenProps<WorkspaceSplitNavigatorParamList, typeof SCREENS.WORKSPACE.TAXES>;
 
@@ -71,13 +67,13 @@ function WorkspaceTaxesPage({
             ...value,
             key,
     const shouldDisplayButtonsInSeparateLine = useShouldDisplayButtonsInSeparateLine();
-            pendingAction: policyTaxRates.pendingFields?.taxes?.[key] ?? policyTaxRates.pendingAction,
-            errors: value.errors ?? policyTaxRates.errorFields?.taxes?.[key] ?? undefined,
-        }));
-    }, [policyTaxRates, allTaxRates]);
-
-    const customTaxRates = useMemo(() => taxRatesList.filter((taxRate) => taxRate.name !== CONST.DEFAULT_TAX_RATES.DEFAULT_TAX_RATE_NAME), [taxRatesList]);
-    const defaultTaxRate = useMemo(() => taxRatesList.find((taxRate) => taxRate.name === CONST.DEFAULT_TAX_RATES.DEFAULT_TAX_RATE_NAME), [taxRatesList]);
+    const styles = useThemeStyles();
+    const {translate, localeCompare} = useLocalize();
+    const [selectedTaxesIDs, setSelectedTaxesIDs] = useState<string[]>([]);
+    const {showConfirmModal} = useConfirmModal();
+    const isMobileSelectionModeEnabled = useMobileSelectionMode();
+    const {canWrite: canWriteTaxes, showReadOnlyModal, withReadOnlyFallback} = usePolicyFeatureWriteAccess(policy, CONST.POLICY.POLICY_FEATURE.TAXES);
+    const defaultExternalID = policy?.taxRates?.defaultExternalID;
     const foreignTaxDefault = policy?.taxRates?.foreignTaxDefault;
     const hasAccountingConnections = hasAccountingConnectionsPolicyUtils(policy);
     const [connectionSyncProgress] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CONNECTION_SYNC_PROGRESS}${policy?.id}`);
