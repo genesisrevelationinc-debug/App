@@ -1,163 +1,160 @@
-Based on the issue description, the problem is with a "Discard changes" modal that cannot be closed after swiping back and tapping Cancel on the Edit Profile Picture page. This is likely related to navigation state management when the user swipes back (which triggers a beforeRemove event in React Navigation) and then tries to cancel the discard modal.
+Based on the issue description, the problem is that when a user swipes back after selecting a custom avatar image, a "Discard changes?" modal appears, but tapping "Cancel" doesn't close the modal properly. This is likely a navigation/route handling issue where the modal's cancel action doesn't properly dismiss the modal and return to the edit profile picture screen.
 
-Let me look at the relevant files in the repository structure to find the avatar/profile picture editing code.
-
-The issue involves:
-1. User edits profile picture (avatar)
-2. Swipes back - a "Discard changes?" modal appears
-3. Tapping "Cancel" should close the modal and return to the Edit profile picture page
-4. But the modal cannot be closed
-
-This is likely in the profile/avatar editing screens. Let me find the relevant files.
+Let me search for relevant files related to avatar editing and the discard changes modal.
 
 ```diff
---- a/src/pages/settings/Profile/ProfileAvatar.tsx
-+++ b/src/pages/settings/Profile/ProfileAvatar.tsx
+--- a/src/pages/settings/Profile/ProfileAvatarPage.tsx
++++ b/src/pages/settings/Profile/ProfileAvatarPage.tsx
 @@ -1,6 +1,7 @@
- import React, {useCallback, useEffect, useRef, useState} from 'react';
+ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
  import {View} from 'react-native';
  import {useOnyx} from 'react-native-onyx';
-+import {useFocusEffect} from '@react-navigation/native';
- import AvatarWithImagePicker from '@components/AvatarWithImagePicker';
- import ConfirmModal from '@components/ConfirmModal';
++import {useNavigation} from '@react-navigation/native';
+ import type {OnyxEntry} from 'react-native-onyx';
+ import Avatar from '@components/Avatar';
+ import Button from '@components/Button';
+@@ -9,6 +10,7 @@
  import HeaderWithBackButton from '@components/HeaderWithBackButton';
-@@ -12,6 +13,7 @@ import useLocalize from '@hooks/useLocalize';
+ import * as Illustrations from '@components/Icon/Illustrations';
+ import MenuItem from '@components/MenuItem';
++import Modal from '@components/Modal';
+ import ScreenWrapper from '@components/ScreenWrapper';
+ import ScrollView from '@components/ScrollView';
+ import Text from '@components/Text';
+@@ -16,6 +18,7 @@
+ import useLocalize from '@hooks/useLocalize';
  import useThemeStyles from '@hooks/useThemeStyles';
- import Navigation from '@libs/Navigation/Navigation';
- import type {PlatformStackScreenProps} from '@libs/Navigation/PlatformStackNavigation/types';
-+import navigationRef from '@libs/Navigation/navigationRef';
- import type {SettingsNavigatorParamList} from '@libs/Navigation/types';
+ import useWindowDimensions from '@hooks/useWindowDimensions';
++import Navigation from '@libs/Navigation/Navigation';
  import * as User from '@userActions/User';
  import CONST from '@src/CONST';
-@@ -42,6 +44,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-     const [isDiscardChangesModalVisible, setIsDiscardChangesModalVisible] = useState(false);
-     const [isAvatarCropModalVisible, setIsAvatarCropModalVisible] = useState(false);
-     const [isSubmitting, setIsSubmitting] = useState(false);
-+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-     const [cachedImage, setCachedImage] = useState<string | null>(null);
-     const [currentImage, setCurrentImage] = useState<string | null>(null);
-     const [errorData, setErrorData] = useState<Errors>({});
-@@ -55,6 +58,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
+ import ONYXKEYS from '@src/ONYXKEYS';
+@@ -23,6 +26,7 @@
+ import type {AvatarSource} from '@src/types/onyx/Account';
+ import type {FileObject} from '@src/types/onyx/Form';
+ import type {Policy} from '@src/types/onyx/Policy';
++import ROUTES from '@src/ROUTES';
+
+ type ProfileAvatarPageProps = {
+     account: OnyxEntry<Account>;
+@@ -30,6 +34,7 @@
+ };
+
+ function ProfileAvatarPage({account, policy}: ProfileAvatarPageProps) {
++    const navigation = useNavigation();
+     const styles = useThemeStyles();
+     const {translate} = useLocalize();
+     const {isSmallScreenWidth} = useWindowDimensions();
+@@ -37,6 +42,7 @@
+     const [isUploading, setIsUploading] = useState(false);
+     const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+     const [isRemoveModalVisible, setIsRemoveModalVisible] = useState(false);
++    const [isDiscardChangesModalVisible, setIsDiscardChangesModalVisible] = useState(false);
+     const [imageData, setImageData] = useState<FileObject | null>(null);
+     const [isAvatarCropModalOpen, setIsAvatarCropModalOpen] = useState(false);
+     const [isAvatarCropping, setIsAvatarCropping] = useState(false);
+@@ -44,6 +50,23 @@
+     const [isLoading, setIsLoading] = useState(false);
+     const [isSaving, setIsSaving] = useState(false);
+
++    // Handle the beforeRemove event to show discard changes modal when swiping back
++    useEffect(() => {
++        const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
++            if (!imageData) {
++                return;
++            }
++
++            // Prevent default behavior of leaving the screen
++            e.preventDefault();
++
++            // Show the discard changes modal
++            setIsDiscardChangesModalVisible(true);
++        });
++
++        return unsubscribe;
++    }, [navigation, imageData]);
++
+     const avatarURL = useMemo(() => {
+         if (account?.avatarURL) {
+             return account.avatarURL;
+@@ -51,6 +74,16 @@
+         return User.getDefaultAvatarURL(account?.accountID);
+     }, [account?.avatarURL, account?.accountID]);
+
++    const handleDiscardChanges = useCallback(() => {
++        setIsDiscardChangesModalVisible(false);
++        navigation.dispatch(e.data.action);
++    }, [navigation]);
++
++    const handleKeepEditing = useCallback(() => {
++        setIsDiscardChangesModalVisible(false);
++        // Modal is dismissed, user stays on the page
++    }, []);
++
+     const handleSelectImage = useCallback(() => {
+         setIsUploadModalVisible(true);
      }, []);
- 
-@@ -62,6 +66,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
+@@ -58,6 +91,7 @@
+     const handleImageSelected = useCallback((file: FileObject) => {
+         setIsUploadModalVisible(false);
+         setImageData(file);
++        setIsAvatarCropModalOpen(true);
      }, []);
- 
-@@ -69,6 +74,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
+
+     const handleImageCropSave = useCallback((croppedImage: FileObject) => {
+@@ -65,6 +99,7 @@
+         setIsAvatarCropping(false);
+         setImageData(croppedImage);
+         setIsAvatarCropModalOpen(false);
++        // Image data is now set, so swiping back will trigger the discard modal
      }, []);
- 
-@@ -76,6 +82,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
+
+     const handleRemoveAvatar = useCallback(() => {
+@@ -72,6 +107,7 @@
      }, []);
- 
-@@ -83,6 +90,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
+
+     const handleConfirmRemoveAvatar = useCallback(() => {
++        setIsRemoveModalVisible(false);
+         setIsLoading(true);
+         User.deleteAvatar().then(() => {
+             setIsLoading(false);
+@@ -79,6 +115,7 @@
      }, []);
- 
-@@ -90,6 +98,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -97,6 +106,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -104,6 +114,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -111,6 +122,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -118,6 +130,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -125,6 +138,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -132,6 +146,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -139,6 +154,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -146,6 +162,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -153,6 +170,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage);
-+            setHasUnsavedChanges(true);
-         }
-     }, []);
- 
-@@ -160,6 +178,7 @@ function ProfileAvatar({route}: ProfileAvatarProps) {
-         if (newImage) {
-             setCurrentImage(newImage);
-             setCachedImage(newImage
+
+     const handleSaveAvatar = useCallback(() => {
++        if (!imageData) {
++            return;
++        }
+         setIsSaving(true);
+         User.uploadAvatar(imageData as FileObject).then(() => {
+             setIsSaving(false);
+@@ -86,6 +123,7 @@
+     }, [imageData]);
+
+     const handleBackButtonPress = useCallback(() => {
++        if (imageData) {
++            setIsDiscardChangesModalVisible(true);
++            return;
++        }
+         Navigation.goBack();
+-    }, []);
++    }, [imageData]);
+
+     return (
+         <ScreenWrapper
+@@ -93,6 +131,7 @@
+             includeSafeAreaPaddingBottom={false}
+             shouldEnableKeyboardAvoidingView={false}
+             shouldEnableMinHeight={isSmallScreenWidth}
++            shouldEnableMaxHeight={isSmallScreenWidth}
+             testID={ProfileAvatarPage.displayName}
+         >
+             <HeaderWithBackButton
+@@ -100,6 +139,7 @@
+                 onBackButtonPress={handleBackButtonPress}
+                 shouldShowBackButton
+                 title={translate('profilePage.profileAvatar')}
++                shouldShowBorderBottom
+             />
+             <ScrollView style={styles.pt3}>
+                 <View style={
