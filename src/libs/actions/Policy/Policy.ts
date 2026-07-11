@@ -112,49 +112,49 @@ import type {
     BankAccountList,
     Beta,
     CardFeeds,
-    DuplicateWorkspace,
-    IntroSelected,
-    InvitedEmailsToAccountIDs,
-    LastPaymentMethod,
-    LastPaymentMethodType,
-        command: 'DeletePolicyAgent',
-        parameters: {
+    API.write(
+        'DeletePolicyAgent',
+        {
             policyID,
             email: agentEmail,
         },
-    });
+        {
+            optimisticData: [
+                {
+                    onyxMethod: Onyx.METHOD.MERGE,
+                    key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
+                    value: {
+                        employeeList: {
+                            [agentEmail]: null,
+                        },
+                    },
+                },
+            ],
+            successData: [
+                {
+                    onyxMethod: Onyx.METHOD.MERGE,
+                    key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
+                    value: {
+                        employeeList: {
+                            [agentEmail]: null,
+                        },
+                    },
+                },
+            ],
+            failureData: [
+                {
+                    onyxMethod: Onyx.METHOD.MERGE,
+                    key: `${ONYXKEYS.COLLECTION.POLICY}${policyID}`,
+                    value: {
+                        employeeList: {
+                            [agentEmail]: agentData,
+                        },
+                    },
+                },
+            ],
+        },
+    );
 }
-    ReportActions,
-    TaxRatesWithDefault,
-    Transaction,
-    TransactionViolations,
-} from '@src/types/onyx';
-import type {CompanyCardFeedWithDomainID, FundID} from '@src/types/onyx/CardFeeds';
-import type {Participant} from '@src/types/onyx/IOU';
-import type {ErrorFields, Errors, PendingAction} from '@src/types/onyx/OnyxCommon';
-import type {
-    Attributes,
-    AutoReportingOffset,
-    CompanyAddress,
-    CustomUnit,
-    NetSuiteCustomList,
-    NetSuiteCustomSegment,
-    PolicyReportField,
-    ProhibitedExpenses,
-    Rate,
-    TaxRate,
-    UberReceiptPartner,
-} from '@src/types/onyx/Policy';
-import type {CustomFieldType} from '@src/types/onyx/PolicyEmployee';
-import type {NotificationPreference} from '@src/types/onyx/Report';
-import type ReportNextStepDeprecated from '@src/types/onyx/ReportNextStepDeprecated';
-import type {OnyxData} from '@src/types/onyx/Request';
-import {isEmptyObject} from '@src/types/utils/EmptyObject';
-
-import type {OnyxCollection, OnyxCollectionInputValue, OnyxEntry, OnyxUpdate} from 'react-native-onyx';
-import type {TupleToUnion, ValueOf} from 'type-fest';
-
-/* eslint-disable max-lines */
 import {formatInTimeZone} from 'date-fns-tz';
 import {addDays} from 'date-fns/addDays';
 import {subMinutes} from 'date-fns/subMinutes';
