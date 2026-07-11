@@ -1,2 +1,2 @@
-// Find the Purchase Amount column definition and ensure it has proper alignment
-// The column should have textAlign: 'left' or similar alignment property
+// This file likely contains column definitions for the search table
+// The Purchase Amount column needs its alignment fixed from 'right' to 'left'
